@@ -1,0 +1,32 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+[project]
+name = "gama_gymnasium"
+version = "0.0.1"
+authors = [
+  { name="Baptiste Lesquoy", email="baptistelesquoy@protonmail.com" },
+  { name="Meritxell Vinyals", email="meritxell.vinyals@inrae.fr" },
+]
+description = "A gymnasium environment to manipulate GAMA simulations through GAMA server"
+readme = "README.md"
+license = { file="LICENSE" }
+requires-python = ">=3.9"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "gymnasium",
+    "gama-client~=1.2.0",
+]
+[project.urls]
+"Homepage" = "https://github.com/gama-platform/Gama-gymnasium"
+"Bug Tracker" = "https://github.com/gama-platform/Gama-gymnasium/issues"
+[tool.hatch.build]
+include = [
+  "envs/*.py",
+]
+exclude = [
+]
