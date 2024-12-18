@@ -1,5 +1,5 @@
 # gama-gymnasium
-A generic [gymnasium](https://gymnasium.farama.org/) environment to simulations from the modeling platform [GAMA](https://gama-platform.org/).
+A generic [gymnasium](https://gymnasium.farama.org/) environment to manipulate simulations from the modeling platform [GAMA](https://gama-platform.org/).
 It leverages the python package [gama-client](https://pypi.org/project/gama-client/) to communicate with a [gama server](https://gama-platform.org/wiki/HeadlessServer) and provide the best performances.
 
 Based on previous work available [here](https://github.com/ptaillandier/policy-design/), our goal is to provide a generic and efficient platform that could be reused and adapted by anyone instead of an ad-hoc solution.
@@ -42,20 +42,19 @@ First you need to clone this repository:
 ```bash
 git clone https://github.com/gama-platform/gama-gymnasium.git
 ```
-Make sure you have the corresponding tools to build the package:
-```
-python -m pip install --upgrade build
-```
 
-Then, in the package folder run:
+Then, in the projects's folder run:
 ```
-python -m build
+pip install -e python_package
 ```
 
+#### Test the installation of the plugin
 
-#### Test
-
-You can test that everything works properly by trying to run one of the model in the `examples` directory
+You should now be able to import `gama_gymnasium` in your projects. To test it, in your python environment run:
+```
+import gama_gymnasium
+```
+Normally you shouldn't see any error message. If it's the case check that you have installed the packages mentioned in the requirements section.
 
 ### Adapt your GAMA model to be compatible
 
@@ -79,7 +78,7 @@ TODO: @meritxell.vinyals
 
 ### Run GAMA in server mode
 
-You will need to have GAMA running in server mode for this to work.
+You will need to have GAMA running in server mode for the communication to work.
 To do so, go to your gama installation folder, and in the `headless` folder run the script `gama-headless.sh` if you are on Linux or MacOS and `gama-headless.bat` if you are on Windows.
 The command should look like this:
 ```shell
@@ -88,3 +87,9 @@ gama-headless.sh -socket 6868
 the `-socket` parameter indicates that you want to run a GAMA server, and `6868` is just a random port number that will be used for the connexion, you can switch it to any other port you want.
 
 Once it finished initialized, you can run your python script.
+
+### Test the whole pipeline
+
+You can go in the `tests` folder and in the `simplest_import_gamaenv.py` and in the code change the value of `gama_port` to the port number you set yourself for gama-server in the previous section.
+Once it's done you can run this python script.
+If everything works you should see a few messages allocating a communication port in the console and then the program hang forever.
