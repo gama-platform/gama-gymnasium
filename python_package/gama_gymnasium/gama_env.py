@@ -1,6 +1,6 @@
 import asyncio
 import sys
-from typing import Any, SupportsFloat, Dict
+from typing import Any, SupportsFloat, Dict, Tuple
 
 import gama_client.base_client
 import gymnasium as gym
@@ -12,6 +12,9 @@ import socket
 from gama_client import *
 
 from gama_client.sync_client import GamaSyncClient
+
+from gama_gymnasium.message_util import *
+from gama_client.message_types import *
 
 
 async def async_command_answer_handler(message: Dict):
@@ -31,6 +34,11 @@ class GamaEnv(gym.Env):
 
     # GAMA server variables
     gama_server_client: GamaSyncClient = None
+    """
+    This is the id used by gama-server to identify the simulation we are manipulating.
+    It is provided by gama-server as a return when we are done loading the simulation.
+    """
+    simulation_id: str = None
 
     # Simulation execution variables
     simulation_socket = None
@@ -41,39 +49,28 @@ class GamaEnv(gym.Env):
                  observation_space: Space[ObsType], action_space: Space[ActType],
                  gama_ip_address: str | None = None, gama_port: int = 6868, render_mode=None):
 
+        self.state = None
         self.gaml_file_path = gaml_experiment_path
         self.experiment_name = gaml_experiment_name
 
-        # If we don't have an ip address then we try to run gama-server ourselves
-        # if gama_ip_address is None:
-        #     exec(f"gama -socket {gama_port}")
-        #     gama_ip_address = "localhost"
-
+        # Creating the object to interact with gama server
         self.gama_server_client = GamaSyncClient(gama_ip_address, gama_port, async_command_answer_handler,
                                                  gama_server_message_handler)
+        # We try to connect to gama-server
         self.gama_server_client.sync_connect()
 
-        # We try to connect to gama-server
-
+        # Finally we allocate the gymnasium environment variables
         self.observation_space = observation_space
         self.action_space = action_space
-
         self.render_mode = render_mode
 
     def reset(self, seed: int = None, options: dict[str, Any] | None = None) -> tuple[ObsType, dict[str, Any]]:
-        # print("RESET")
 
         # We need the following line to seed self.np_random
-        super().reset(seed=seed)
-
-        # print("self.gama_simulation_as_file", self.gama_simulation_as_file)
-        # print("self.gama_simulation_connection",
-        #      self.gama_simulation_connection)
+        super().reset(seed=seed, options=options)
 
         # Check if the environment terminated
         if self.simulation_connection is not None:
-            # print("self.gama_simulation_connection.fileno()",
-            #      self.gama_simulation_connection.fileno())
             if self.simulation_connection.fileno() != -1:
                 self.simulation_connection.shutdown(socket.SHUT_RDWR)
                 self.simulation_connection.close()
@@ -88,31 +85,27 @@ class GamaEnv(gym.Env):
         self.wait_for_gama_to_connect()
         self.state, end = self.read_observations()
 
-        # print('after reset self.state', self.state)
-        # print('after reset end', end)
-        # print("END RESET")
-
-        return np.array(self.state, dtype=np.float32), {}
+        return self.state, {}  # TODO: currently no additional information
 
     def step(self, action: ActType) -> tuple[ObsType, SupportsFloat, bool, bool, dict[str, Any]]:
+        reward = None
+        end = True
         try:
-            # print("STEP")
 
             # sending actions
-            str_action = GamaEnv.action_to_string(np.array(action))  # TODO: can we always convert it to an array ?
-
+            str_action = action_to_string(np.array(action))
             self.simulation_as_file.write(str_action)
             self.simulation_as_file.flush()
-            # print("model sent policy, now waiting for reward")
 
             # we wait for the reward
             policy_reward = self.simulation_as_file.readline()
             reward = float(policy_reward)
 
-            # print("model received reward:", policy_reward, " as a float: ", reward)
+            # We read observations from the simulation and set the state
             self.state, end = self.read_observations()
-            # print("observations received", self.state, end)
-            # If it was the final step, we need to send a message back to the simulation once everything done to acknowledge that it can now close
+
+            # If it was the final step, we need to send a message back to the simulation once
+            # everything is done to acknowledge that it can now close
             if end:
                 self.simulation_as_file.write("END\n")
                 self.simulation_as_file.flush()
@@ -124,24 +117,26 @@ class GamaEnv(gym.Env):
         except ConnectionResetError:
             print("connection reset, end of simulation")
         except:
-            print("EXCEPTION pendant l'execution")
+            print("EXCEPTION during runtime")
             print(sys.exc_info()[0])
             sys.exit(-1)
-        # print("END STEP")
-        return self.state, reward, end, False, {}
+
+        return self.state, reward, end, False, {}  # TODO: here too we don't provide information yet
 
     def render(self):
         pass
         # TODO: check that we can't do something with snapshots maybe ?
 
     def close(self):
-        # TODO: check that there's nothing to close on the gama side
-        pass
+        # Closing the connection to gama-server
+        if self.gama_server_client is not None:
+            self.gama_server_client.sync_close_connection()
 
-    def run_gama_simulation(self):
+    def run_gama_simulation(self) -> bool:
         """
-        In this function we ask gama-server to run the simulation with the parameters we want
-        :return:
+        This function asks gama-server to run the simulation described at initialization of the environment.
+        We also set up a communication channel to this simulation and provide the port with which to communicate
+        as a simulation parameter.
         """
         communication_port = self.listener_init()
         parameters = [
@@ -152,8 +147,12 @@ class GamaEnv(gym.Env):
             },
         ]
 
-        self.gama_server_client.sync_load(self.gaml_file_path, self.experiment_name, False, False,
-                                         False, False, parameters=parameters)
+        server_answer = self.gama_server_client.sync_load(self.gaml_file_path, self.experiment_name, False,
+                                                          False, False, False, parameters=parameters)
+        if server_answer["type"] == MessageTypes.CommandExecutedSuccessfully:
+            self.simulation_id = server_answer["content"]
+            return True
+        return False
 
     # Initialize the socket to communicate with gama
     def listener_init(self) -> int:
@@ -167,38 +166,35 @@ class GamaEnv(gym.Env):
         s.listen()
         print("Socket started listening")
 
-        self.gama_socket = s
+        self.simulation_socket = s
         return port
 
     def wait_for_gama_to_connect(self):
         """Waits for the gama simulation to be completely initialised and for it to connect on the
         server opened by the environment to exchange actions and observations."""
-        self.gama_simulation_connection, addr = self.gama_socket.accept()
+        self.gama_simulation_connection, addr = self.simulation_socket.accept()
         print("gama connected:", self.gama_simulation_connection, addr)
         self.gama_simulation_as_file = self.gama_simulation_connection.makefile(mode='rw')
         print("self.gama_simulation_as_file", self.gama_simulation_as_file)
 
-    def read_observations(self):
-
+    def read_observations(self) -> Tuple[ObsType, bool]:
+        """
+        Reads the observations from the gama simulation.
+        :return: A tuple containing the observation and a boolean indicating if the simulation has ended or not
+        """
         received_observations: str = self.simulation_as_file.readline()
         # print("model received:", received_observations)
 
-        over = "END" in received_observations
-        obs = GamaEnv.string_to_nparray(received_observations.replace("END", ""))
-        # obs[2]  = float(self.n_times_4_action - self.i_experience)  # We change the last observation to be the number of times that remain for changing the policy
+        over = self.is_simulation_over(received_observations)
+        obs = string_to_nparray(received_observations)
 
         return obs, over
 
-    # Converts a string to a numpy array of floats
-    @classmethod
-    def string_to_nparray(cls, array_as_string: str) -> NDArray[np.float64]:
-        # first we remove brackets and parentheses
-        clean = "".join([c if c not in "()[]{}" else '' for c in str(array_as_string)])
-        # then we split into numbers
-        nbs = [float(nb) for nb in filter(lambda s: s.strip() != "", clean.split(','))]
-        return np.array(nbs)
-
-    # Converts an action to a string to be sent to the simulation
-    @classmethod
-    def action_to_string(cls, actions: NDArray) -> str:
-        return ",".join([str(action) for action in actions]) + "\n"
+    def is_simulation_over(self, received_observations: str) -> bool:
+        """
+        Given the observations received, determines if the simulation is over or not.
+        This method should be overwritten in case another communication protocol is used.
+        :param received_observations: the whole message representing the observations sent by the simulation
+        :return: True if the simulation has stopped
+        """
+        return observation_contains_end(received_observations)

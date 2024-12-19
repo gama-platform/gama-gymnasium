@@ -90,6 +90,6 @@ Once it finished initialized, you can run your python script.
 
 ### Test the whole pipeline
 
-You can go in the `tests` folder and in the `simplest_import_gamaenv.py` and in the code change the value of `gama_port` to the port number you set yourself for gama-server in the previous section.
+You can go in the `tests` folder and in the `gamaenv_loads_simulation.py` and in the code change the value of `gama_port` to the port number you set yourself for gama-server in the previous section.
 Once it's done you can run this python script.
 If everything works you should see a few messages allocating a communication port in the console and then the program hang forever.
