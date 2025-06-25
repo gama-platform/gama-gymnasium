@@ -1,14 +1,14 @@
-import asyncio
 import json
-import sys
-from typing import Any, SupportsFloat, Dict, Tuple
+import time
+import asyncio
+from typing import Any, SupportsFloat
 
-import gama_client.base_client
+import numpy as np
+
 import gymnasium as gym
 from gymnasium import Space
+from gymnasium.spaces import Discrete, Box, MultiBinary, MultiDiscrete, Text, Tuple, Dict, Sequence, Graph, OneOf
 from gymnasium.core import ActType, ObsType
-import socket
-from gama_client import *
 
 from gama_client.sync_client import GamaSyncClient
 
@@ -16,207 +16,266 @@ from gama_gymnasium.message_util import *
 from gama_client.message_types import *
 
 
-async def async_command_answer_handler(message: Dict):
+async def async_command_answer_handler(message: dict):
     print("Here is the answer to an async command: ", message)
 
 
-async def gama_server_message_handler(message: Dict):
+async def gama_server_message_handler(message: dict):
     print("I just received a message from Gama-server and it's not an answer to a command!")
     print("Here it is:", message)
 
 
-# TODO: add info as return for reset and step ?
 class GamaEnv(gym.Env):
-    # USER LOCAL VARIABLES
-    gaml_file_path: str  # Path to the gaml file containing the experiment/simulation to run
-    experiment_name: str  # Name of the experiment to run
-
-    # GAMA server variables
-    gama_server_client: GamaSyncClient = None
     """
-    This is the id used by gama-server to identify the simulation we are manipulating.
-    It is provided by gama-server as a return when we are done loading the simulation.
+    This class is a placeholder for the GamaEnv implementation. It should be replaced with the actual implementation
+    that interacts with the Gama server.
     """
-    simulation_id: str = None
 
-    # Simulation execution variables
-    simulation_socket = None
-    simulation_as_file = None
-    simulation_connection = None  # Resulting from socket create connection
-
-    def __init__(self, gaml_experiment_path: str, gaml_experiment_name: str,
-                 observation_space: Space[ObsType], action_space: Space[ActType],
+    def __init__(self, gaml_experiment_path: str, gaml_experiment_name: str, gaml_experiment_parameters: list[dict[str, Any]] | None = None,
                  gama_ip_address: str | None = None, gama_port: int = 6868, render_mode=None):
+        
 
-        self.state = None
         self.gaml_file_path = gaml_experiment_path
         self.experiment_name = gaml_experiment_name
-
+        self.experiment_parameters = gaml_experiment_parameters if gaml_experiment_parameters is not None else []
+        
         # Creating the object to interact with gama server
         self.gama_server_client = GamaSyncClient(gama_ip_address, gama_port, async_command_answer_handler,
                                                  gama_server_message_handler)
         # We try to connect to gama-server
-        self.gama_server_client.sync_connect()
+        self.gama_server_client.connect()
 
         # Finally we allocate the gymnasium environment variables
-        self.observation_space = observation_space
-        self.action_space = action_space
         self.render_mode = render_mode
+
+        gama_response = self.gama_server_client.load(self.gaml_file_path, self.experiment_name, console=False, runtime=True, parameters=self.experiment_parameters)
+        if gama_response["type"] != MessageTypes.CommandExecutedSuccessfully.value:
+            raise Exception("error while loading", gama_response)
+        self.experiment_id = gama_response["content"]
+
+        if gama_port == 1000:
+            time.sleep(5)  # Allow some time for the environment to initialize
+
+        # while done:
+        #     gama_response = self.gama_server_client.listen()
+        #     if gama_response["type"] == MessageTypes.CommandExecutedSuccessfully.value:
+        #         print("Gama response:", gama_response["content"])
+        #         done = True
+
+        gama_response = self.gama_server_client.expression(self.experiment_id, r"GymAgent[0].observation_space")
+        # gama_response = self.gama_server_client.expression(self.experiment_id, r"observation_space")
+        if gama_response["type"] != MessageTypes.CommandExecutedSuccessfully.value:
+            raise Exception("error while getting observation space", gama_response)
+        gama_observation_map = json.loads(gama_response["content"])
+        # print("Gama observation map:", gama_observation_map)
+
+        gama_response = self.gama_server_client.expression(self.experiment_id, r"GymAgent[0].action_space")
+        # gama_response = self.gama_server_client.expression(self.experiment_id, r"action_space")
+        if gama_response["type"] != MessageTypes.CommandExecutedSuccessfully.value:
+            raise Exception("error while getting action space", gama_response)
+        gama_action_map = json.loads(gama_response["content"])
+        # print("Gama action map:", gama_action_map)
+
+        self.observation_space = map_to_space(gama_observation_map)
+        self.action_space = map_to_space(gama_action_map)
 
     def reset(self, seed: int = None, options: dict[str, Any] | None = None) -> tuple[ObsType, dict[str, Any]]:
 
         # We need the following line to seed self.np_random
         super().reset(seed=seed, options=options)
 
-        # Check if the environment terminated
-        if self.simulation_connection is not None:
-            if self.simulation_connection.fileno() != -1:
-                self.simulation_connection.shutdown(socket.SHUT_RDWR)
-                self.simulation_connection.close()
-                try:
-                    # This can fail depending on the socket state
-                    self.simulation_socket.shutdown(socket.SHUT_RDWR)
-                    self.simulation_socket.close()
-                except:
-                    pass
-
-        if self.simulation_as_file is not None:
-            self.simulation_as_file.close()
-            self.simulation_as_file = None
-
-        # Starts gama and get initial state
-        success, answer = self.run_gama_simulation()
-        if success:
-            self.wait_for_gama_to_connect()
-            self.state, end = self.read_observations() # we read the initial observations
+        gama_response = self.gama_server_client.reload(self.experiment_id)
+        if gama_response["type"] != MessageTypes.CommandExecutedSuccessfully.value:
+            raise Exception("error while reloading", gama_response)
+        
+        # Set the seed for the experiment
+        if seed is not None: 
+            gama_response = self.gama_server_client.expression(self.experiment_id, fr"seed <- {seed};")
+            if gama_response["type"] != MessageTypes.CommandExecutedSuccessfully.value:
+                raise Exception("error while setting seed", gama_response)
         else:
-            raise Exception("Unable to connect to run the gama simulation:\n" + json.dumps(answer["content"]))
+            gama_response = self.gama_server_client.expression(self.experiment_id, fr"seed <- {np.random.random()};")
+            if gama_response["type"] != MessageTypes.CommandExecutedSuccessfully.value:
+                raise Exception("error while setting seed to 0", gama_response)
+        
+        gama_response = self.gama_server_client.expression(self.experiment_id, r"GymAgent[0].state")
+        state = json.loads(gama_response["content"])
+        state = self.observation_space.from_jsonable([state])[0]
+        # print("State after reset:", state)
+        # print("Is in observation space:", self.observation_space.contains(state))
 
-        return self.state, {}  # TODO: currently no additional information
+        gama_response = self.gama_server_client.expression(self.experiment_id, r"GymAgent[0].info")
+        info = json.loads(gama_response["content"])
+        
 
+        return state, info
+    
     def step(self, action: ActType) -> tuple[ObsType, SupportsFloat, bool, bool, dict[str, Any]]:
-        reward = None
-        end = True
-        try:
-            # We execute one step of the simulation
-            # TODO: this shouldn't be 1:1, this should be something to set by the user and on a step basis on the
-            # TODO: gymnasium side
-            self.gama_server_client.sync_step(self.simulation_id)
-            # sending actions
-            str_action = action_to_string(list(action))
-            self.simulation_as_file.write(str_action)
-            self.simulation_as_file.flush()
+        # start_set_action = time.perf_counter()
+        action = self.action_space.to_jsonable([action])[0]
+        gama_response = self.gama_server_client.expression(self.experiment_id, fr"GymAgent[0].next_action <- {action};")
+        # end_set_action = time.perf_counter()
+        # print(f"Setting action took {end_set_action - start_set_action:.5f} seconds")
+        if gama_response["type"] != MessageTypes.CommandExecutedSuccessfully.value:
+            raise Exception("error while setting action", gama_response)
 
-            # we wait for the reward
-            policy_reward = self.simulation_as_file.readline()
-            reward = float(policy_reward)
+        # start_step = time.perf_counter()
+        gama_response = self.gama_server_client.step(self.experiment_id, sync=True)
+        # end_step = time.perf_counter()
+        # print(f"Step took {end_step - start_step:.5f} seconds")
+        if gama_response["type"] != MessageTypes.CommandExecutedSuccessfully.value:
+            raise Exception("error while running step", gama_response)
+        
+        # start_get_data = time.perf_counter()
+        gama_response = self.gama_server_client.expression(self.experiment_id, r"GymAgent[0].data")
+        # end_get_data = time.perf_counter()
+        # print(f"Getting state took {end_get_data - start_get_data:.5f} seconds")
+        if gama_response["type"] != MessageTypes.CommandExecutedSuccessfully.value:
+            raise Exception("error while getting state", gama_response)
+        data = json.loads(gama_response["content"])
+        state = self.observation_space.from_jsonable([data["State"]])[0]
+        reward = data["Reward"]
+        terminated = data["Terminated"]
+        truncated = data["Truncated"]
+        info = data["Info"]
 
-            # We read observations from the simulation and set the state
-            self.state, end = self.read_observations()
+        # end = time.perf_counter()
 
-            # If it was the final step, we need to send a message back to the simulation once
-            # everything is done to acknowledge that it can now close
-            if end:
-                self.simulation_as_file.write("END\n")
-                # self.simulation_as_file.flush()
-                # self.simulation_as_file.close()
+        # print(f"Total time for step: {end - start_set_action:.5f} seconds")
 
-                # try:
-                #     self.simulation_connection.shutdown(socket.SHUT_RDWR)
-                #     self.simulation_connection.close()
-                # except:
-                #     pass
-                #
-                # try:
-                #     # This can fail depending on the socket state
-                #     self.simulation_socket.shutdown(socket.SHUT_RDWR)
-                #     self.simulation_socket.close()
-                # except:
-                #     pass
-        except ConnectionResetError:
-            print("connection reset, end of simulation")
-        except:
-            print("EXCEPTION during runtime")
-            print(sys.exc_info()[0])
-            sys.exit(-1)
+        return state, reward, terminated, truncated, info
+    
+    def render(self, mode='human'):
+        # Placeholder for rendering logic
+        print("Rendering the environment... (not implemented)")
 
-        return self.state, reward, end, False, {}  # TODO: here too we don't provide information yet
-
-    def render(self):
-        pass
-        # TODO: check that we can't do something with snapshots maybe ?
-
+        return
+    
     def close(self):
-        # Running a last step so the simulation can close
-        try:
-            self.gama_server_client.sync_step(self.simulation_id)
-        except:
-            pass
-        # Closing the connection to gama-server
+
         if self.gama_server_client is not None:
-            self.gama_server_client.sync_close_connection()
+            self.gama_server_client.close_connection()
 
-    def run_gama_simulation(self) -> (bool, Dict):
+    def convert_action_to_gama(self, action: ActType) -> str:
         """
-        This function asks gama-server to run the simulation described at initialization of the environment.
-        We also set up a communication channel to this simulation and provide the port with which to communicate
-        as a simulation parameter.
+        Converts the action to a GAMA-compatible string format.
+        This is a placeholder and should be replaced with actual conversion logic.
         """
-        communication_port = self.listener_init()
-        parameters = [
-            {
-                "name": "communication_port",
-                "value": communication_port,
-                "type": "int"
-            },
-        ]
-
-        server_answer = self.gama_server_client.sync_load(self.gaml_file_path, self.experiment_name, False,
-                                                          False, False, False, parameters=parameters)
-        if server_answer["type"] == MessageTypes.CommandExecutedSuccessfully.value:
-            self.simulation_id = server_answer["content"]
-            return True, server_answer
-        return False, server_answer
-
-    # Initialize the socket to communicate with gama
-    def listener_init(self) -> int:
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
-        s.bind(('', 0))  # localhost + port given by the os
-        port = s.getsockname()[1]
-
-        s.listen()
-        print(f"Socket started listening on port {port}")
-
-        self.simulation_socket = s
-        return port
-
-    def wait_for_gama_to_connect(self):
-        """Waits for the gama simulation to be completely initialised and for it to connect on the
-        server opened by the environment to exchange actions and observations."""
-        self.simulation_connection, addr = self.simulation_socket.accept()
-        print("gama successfully connected:", addr)
-        self.simulation_as_file = self.simulation_connection.makefile(mode='rw')
-
-    def read_observations(self) -> Tuple[ObsType, bool]:
+        return str(action)
+    
+    def convert_observation_from_gama(self, observation: str) -> ObsType:
         """
-        Reads the observations from the gama simulation.
-        :return: A tuple containing the observation and a boolean indicating if the simulation has ended or not
+        Converts the observation from GAMA format to a format compatible with Gymnasium.
+        This is a placeholder and should be replaced with actual conversion logic.
         """
-        received_observations: str = self.simulation_as_file.readline()
-        # print("model received:", received_observations)
+        return np.array(json.loads(observation), dtype=np.int32)
 
-        over = self.is_simulation_over(received_observations)
-        obs = string_to_array(received_observations)
+def map_to_space(map):
+    if "type" in map:
+        if map["type"] == "Discrete":
+            return map_to_discrete(map)
+        elif map["type"] == "Box":
+            return map_to_box(map)
+        elif map["type"] == "MultiBinary":
+            return map_to_multi_binary(map)
+        elif map["type"] == "MultiDiscrete":
+            return map_to_multi_discrete(map)
+        elif map["type"] == "Text":
+            return map_to_text(map)
+        # elif map["type"] == "Tuple":
+        #     return map_to_tuple(map)
+        # elif map["type"] == "Dict":
+        #     return map_to_dict(map)
+        # elif map["type"] == "Sequence":
+        #     return map_to_sequence(map)
+        # elif map["type"] == "Graph":
+        #     return map_to_graph(map)
+        # elif map["type"] == "OneOf":
+        #     return map_to_one_of(map)
+        else:
+            print("Unknown type in the map, cannot map to space.")
+            return None
+    else:
+        print("No type specified in the map, cannot map to space.")
+        return None
 
-        return obs, over
+def map_to_box(box):
+    if "low" in box:
+        if isinstance(box["low"], list):
+            low = np.array(replace_infinity(box["low"]))
+        else:
+            low = box["low"]
+    else:
+        low = -np.inf
+    
+    if "high" in box:
+        if isinstance(box["high"], list):
+            high = np.array(replace_infinity(box["high"]))
+        else:
+            high = box["high"]
+    else:
+        high = np.inf
 
-    @staticmethod
-    def is_simulation_over(received_observations: str) -> bool:
-        """
-        Given the observations received, determines if the simulation is over or not.
-        This method should be overwritten in case another communication protocol is used.
-        :param received_observations: the whole message representing the observations sent by the simulation
-        :return: True if the simulation has stopped
-        """
-        return observation_contains_end(received_observations)
+    if "shape" in box:
+        shape = box["shape"]
+    else:
+        shape = None
+
+    if "dtype" in box:
+        if box["dtype"] == "int":
+            dtype = np.int64
+        elif box["dtype"] == "float":
+            dtype = np.float64
+        else:
+            print("Unknown dtype in the box, defaulting to float32.")
+            dtype = np.float32
+    else:
+        dtype = np.float32
+
+    return Box(low=low, high=high, shape=shape, dtype=dtype)
+
+def map_to_discrete(discrete):
+    n = discrete["n"]
+    if "start" in discrete:
+        start = discrete["start"]
+        return Discrete(n, start=start)
+    else:
+        return Discrete(n)
+
+def map_to_multi_binary(mb):
+    n = mb["n"]
+    if len(n) == 1:
+        return MultiBinary(n[0])
+    else:
+        return MultiBinary(n)
+
+def map_to_multi_discrete(md):
+    nvec = md["nvec"]
+    if "start" in md:
+        start = md["start"]
+        return MultiDiscrete(nvec, start=start)
+    else:
+        return MultiDiscrete(nvec)
+
+def map_to_text(text):
+    if "min_length" in text:
+        min = text["min_length"]
+    else:
+        min = 0
+
+    if "max_length" in text:
+        max = text["max_length"]
+    else:
+        max = 1000
+        
+    return Text(min_length=min, max_length=max)
+
+def replace_infinity(data):
+    if isinstance(data, list):
+        return [replace_infinity(item) for item in data]
+    elif data == "Infinity":
+        return float('inf')
+    elif data == "-Infinity":
+        return float('-inf')
+    else:
+        return data
