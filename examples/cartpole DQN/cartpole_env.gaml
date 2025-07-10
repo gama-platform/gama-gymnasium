@@ -8,7 +8,7 @@
 
 model CartpoleEnv
 
-global{
+global {
 	int gama_server_port <- 0;
 	
 	int next_action;
@@ -62,24 +62,7 @@ global{
 	}
 }
 
-species GymAgent {
-	map<string, unknown> action_space;
-	map<string, unknown> observation_space;
-	
-	unknown state;
-	float reward;
-	bool terminated;
-	bool truncated;
-	map<string, unknown> info;
-	
-	map data;
-	
-	action update {
-		data <- ["State"::state, "Reward"::reward, "Terminated"::terminated, "Truncated"::truncated, "Info"::info];
-	}
-	
-	unknown next_action;
-}
+species GymAgent skills:[GymnasiumLink];
 
 species Cartpole {
 	
@@ -148,10 +131,10 @@ species Cartpole {
 		
 		gym_agent.truncated <- false;
 		gym_agent.info <- [];
-		ask gym_agent {do update;}
+		ask gym_agent {do update_data;}
 	}
 	
-	aspect default{
+	aspect default {
 		
 		float world_width <- x_threshold * 2;
 		float scale <- screen_width / world_width;
@@ -196,6 +179,51 @@ species Cartpole {
 		
 		draw line({0, carty},{screen_width, carty}) color: #black;
 	}
+	
+	aspect reverse {
+		float world_width <- x_threshold * 2;
+		float scale <- screen_width / world_width;
+		float polewidth <- 0.1 * scale;
+		float polelen <- (2 * length)* scale;
+		float cartwidth <- 0.5 * scale;
+		float cartheight <- 0.3 * scale;
+		
+		list<float> x <- gym_agent.state;
+		
+		float l <- -cartwidth / 2;
+		float r <- cartwidth / 2;
+		float t <- cartheight / 2;
+		float b <- -cartheight / 2;
+		float axleoffset <- cartheight / 4.0;
+		float cartx <- x[0] * scale + screen_width / 2.0; // MIDDLE OF CART
+		float carty <- 100 - (screen_height / 4); // TOP OF CART
+		
+		list<point> cart_coords <- [{l, b}, {l, t}, {r, t}, {r, b}];
+		cart_coords <- cart_coords collect ({each.x + cartx, carty - each.y});
+		
+		geometry cart_poly <- polygon(cart_coords);
+		draw cart_poly color: #black;
+		
+		l <- -polewidth / 2;
+		r <- polewidth / 2;
+		t <- polelen - polewidth / 2;
+		b <- -polewidth / 2;
+		
+		list<point> pole_coords <- [];
+		loop coord over: [{l, b}, {l, t}, {r, t}, {r, b}]{
+			coord <- coord rotated_by ((-x[2]) * #to_deg :: {0, 0, 1});
+			coord <- {coord.x + cartx, carty - axleoffset - coord.y};
+			pole_coords << coord;
+		}
+		
+		geometry pole_poly <- polygon(pole_coords);
+		draw pole_poly color: #burlywood;
+		
+		geometry joint_circle <- circle(int(polewidth / 2), {cartx, carty - axleoffset});
+		draw joint_circle color: #lightsteelblue;
+		
+		draw line({0, carty},{screen_width, carty}) color: #black;
+	}
 }
 
 experiment gym_env {
@@ -211,7 +239,7 @@ experiment gym_env {
 	output {
 		display Render type: 2d axes: true{
 			// camera 'default' location: {50.0464,40.2342,139.659} target: {50.0,50.0,0.0};
-			species Cartpole;
+			species Cartpole aspect: reverse;
 			graphics screen_border {
 				draw square(99.99) wireframe: true;
 			}

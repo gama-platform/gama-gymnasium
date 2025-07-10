@@ -18,33 +18,33 @@ import gama_gymnasium
 
 # SEED = 1234
 
-def set_seed(seed: int = 0):
-    """Set random seeds for reproducibility."""
-    random.seed(seed)
-    np.random.seed(seed)
-    torch.manual_seed(seed)
-    if torch.cuda.is_available():
-        torch.cuda.manual_seed(seed)
-    if torch.backends.mps.is_available():
-        torch.backends.mps.manual_seed(seed)
-    if torch.backends.cudnn.is_available():
-        torch.backends.cudnn.deterministic = True
-        torch.backends.cudnn.benchmark = False
+# def set_seed(seed: int = 0):
+#     """Set random seeds for reproducibility."""
+#     random.seed(seed)
+#     np.random.seed(seed)
+#     torch.manual_seed(seed)
+#     if torch.cuda.is_available():
+#         torch.cuda.manual_seed(seed)
+#     if torch.backends.mps.is_available():
+#         torch.backends.mps.manual_seed(seed)
+#     if torch.backends.cudnn.is_available():
+#         torch.backends.cudnn.deterministic = True
+#         torch.backends.cudnn.benchmark = False
 
 class FullyConnectedModel(nn.Module):
     def __init__(self, input_size, output_size):
         super(FullyConnectedModel, self).__init__()
 
         # Define layers with ReLU activation
-        self.linear1 = nn.Linear(input_size, 16)
+        self.linear1 = nn.Linear(input_size, 32)
         self.activation1 = nn.ReLU()
-        self.linear2 = nn.Linear(16, 16)
+        self.linear2 = nn.Linear(32, 32)
         self.activation2 = nn.ReLU()
-        self.linear3 = nn.Linear(16, 16)
+        self.linear3 = nn.Linear(32, 32)
         self.activation3 = nn.ReLU()
 
         # Output layer without activation function
-        self.output_layer = nn.Linear(16, output_size)
+        self.output_layer = nn.Linear(32, output_size)
 
         # Initialization using Xavier uniform (a popular technique for initializing weights in NNs)
         nn.init.xavier_uniform_(self.linear1.weight)
@@ -59,31 +59,6 @@ class FullyConnectedModel(nn.Module):
         x = self.activation3(self.linear3(x))
         x = self.output_layer(x)
         return x
-
-# class FullyConnectedModel(nn.Module):
-#     def __init__(self, input_size, output_size):
-#         super(FullyConnectedModel, self).__init__()
-
-#         # Define layers with ReLU activation
-#         self.linear1 = nn.Linear(input_size, 16)
-#         self.activation1 = nn.ReLU()
-#         self.linear2 = nn.Linear(16, 16)
-#         self.activation2 = nn.ReLU()
-
-#         # Output layer without activation function
-#         self.output_layer = nn.Linear(16, output_size)
-
-#         # Initialization using Xavier uniform (a popular technique for initializing weights in NNs)
-#         nn.init.xavier_uniform_(self.linear1.weight)
-#         nn.init.xavier_uniform_(self.linear2.weight)
-#         nn.init.xavier_uniform_(self.output_layer.weight)
-
-#     def forward(self, inputs):
-#         # Forward pass through the layers
-#         x = self.activation1(self.linear1(inputs))
-#         x = self.activation2(self.linear2(x))
-#         x = self.output_layer(x)
-#         return x
     
 class QNetwork:
     def __init__(self, env, lr, logdir=None):
@@ -104,7 +79,7 @@ class QNetwork:
     
 
 class ReplayMemory:
-    def __init__(self, env, memory_size=50000, burn_in=10000):
+    def __init__(self, env, memory_size=50000, burn_in=1000):
         # Initializes the replay memory, which stores transitions recorded from the agent taking actions in the environment.
         self.memory_size = memory_size
         self.burn_in = burn_in
@@ -140,7 +115,7 @@ class DQN_Agent:
         # self.burn_in_memory()
         # end_burn_in = time.perf_counter()
         # print(f"Burn-in memory completed in {end_burn_in - start_burn_in:.2f} seconds.")
-        self.batch_size = 32
+        self.batch_size = 64
         self.gamma = 0.99
         self.c = 0
         self.step_times = []
@@ -270,12 +245,15 @@ class DQN_Agent:
         # state, _ = self.env.reset(seed=SEED)
         state, _ = self.env.reset()
         rewards = []
+        actions = [0, 0]
 
         for t in range(max_t):
             state = torch.from_numpy(state).float().unsqueeze(0)
             with torch.no_grad():
                 q_values = self.policy_net.net(state)
+            print(f"Test step {t+1}/{max_t}, state: {state.numpy()}, q_values: {q_values.numpy()}")
             action = self.greedy_policy(q_values)
+            actions[action] += 1
             state, reward, terminated, truncated, _ = self.env.step(action.item())
             # print(f"test Action: {action.item()}, Reward: {reward}, Terminated: {terminated}, Truncated: {truncated}")
             rewards.append(reward)
@@ -285,12 +263,13 @@ class DQN_Agent:
         if model_file:
             # Save the model if a file path is provided
             torch.save(self.policy_net.net.state_dict(), model_file)
-
+        
+        print(f"Actions taken: {actions[0]} left, {actions[1]} right")
         return np.sum(rewards)
 
 
 async def main():
-    # set_seed(SEED)
+    model_score = {}
 
     # Set environment and training parameters
     env_name = 'gama_gymnasium_env/GamaEnv-v0'
@@ -301,7 +280,7 @@ async def main():
     learning_rate = 5e-4
 
     # Plot average performance of 5 trials
-    num_seeds = 5
+    num_seeds = 2
     l = num_episodes_train // 10
     res = np.zeros((num_seeds, l))
     gamma = 0.99
@@ -347,11 +326,14 @@ async def main():
 
 
         # Save the trained model
-        if not exists(str(Path(__file__).parents[0] / "models")):
-            os.makedirs(str(Path(__file__).parents[0] / "models"))
+        if not exists(str(Path(__file__).parents[0] / "models_saved")):
+            os.makedirs(str(Path(__file__).parents[0] / "models_saved"))
 
-        save_path = str(Path(__file__).parents[0] / "models" / f"cartpole_dqn{i}.pth")
+        save_path = str(Path(__file__).parents[0] / "models_saved" / f"cartpole_dqn{i}.pth")
         torch.save(agent.policy_net.net.state_dict(), save_path)
+        model_score[f"cartpole_dqn{i}"] = res[i]
+
+    print("Model scores:", model_score)
 
     # Plotting the average performance
     ks = np.arange(l) * 10
@@ -415,7 +397,7 @@ async def test_train_cartpole():
     exp_name = "gym_env"
 
     # Load the pre-trained model
-    model_file = str(Path(__file__).parents[0] / "models" / "cartpole_dqn0.pth")
+    model_file = str(Path(__file__).parents[0] / "models_saved" / "cartpole_dqn0.pth")
     model = load_nn_model(model_file)
     agent = DQN_Agent(env_name, exp_path, exp_name)
     agent.policy_net.net = model
@@ -431,10 +413,11 @@ async def test_train_cartpole():
     # env.action_space.seed(SEED)
     # env.observation_space.seed(SEED)
     done = False
-    time.sleep(8)  # Allow some time for the environment to initialize
+    time.sleep(12)  # Allow some time for the environment to initialize
 
     # Run the environment for 20 steps
-    while not done:
+    i = 0
+    while not done and i < 2000:
         
         # Choose an action based on the learned Q-network
         state = torch.from_numpy(state).float().unsqueeze(0)
@@ -445,6 +428,7 @@ async def test_train_cartpole():
         # Take the chosen action and observe the next state, reward, and termination status
         state, reward, terminated, truncated, _ = env.step(action)
         
+        i += 1
         # If the episode is terminated or truncated, reset the environment
         if terminated or truncated:
             done = True
@@ -453,4 +437,5 @@ async def test_train_cartpole():
     env.close()
 
 if __name__ == "__main__":
-    asyncio.run(test_train_cartpole())
+    asyncio.run(main())
+    # asyncio.run(test_train_cartpole())

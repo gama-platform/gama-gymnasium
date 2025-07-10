@@ -54,7 +54,7 @@ class GamaEnv(gym.Env):
         self.experiment_id = gama_response["content"]
 
         if gama_port == 1000:
-            time.sleep(5)  # Allow some time for the environment to initialize
+            time.sleep(8)  # Allow some time for the environment to initialize
 
         # while done:
         #     gama_response = self.gama_server_client.listen()
@@ -66,14 +66,18 @@ class GamaEnv(gym.Env):
         # gama_response = self.gama_server_client.expression(self.experiment_id, r"observation_space")
         if gama_response["type"] != MessageTypes.CommandExecutedSuccessfully.value:
             raise Exception("error while getting observation space", gama_response)
-        gama_observation_map = json.loads(gama_response["content"])
+        # print("Gama observation space:", gama_response["content"])
+        # print("Gama observation space type:", type(gama_response["content"]))
+        # gama_observation_map = json.loads(gama_response["content"])
+        gama_observation_map = gama_response["content"]
         # print("Gama observation map:", gama_observation_map)
 
         gama_response = self.gama_server_client.expression(self.experiment_id, r"GymAgent[0].action_space")
         # gama_response = self.gama_server_client.expression(self.experiment_id, r"action_space")
         if gama_response["type"] != MessageTypes.CommandExecutedSuccessfully.value:
             raise Exception("error while getting action space", gama_response)
-        gama_action_map = json.loads(gama_response["content"])
+        # gama_action_map = json.loads(gama_response["content"])
+        gama_action_map = gama_response["content"]
         # print("Gama action map:", gama_action_map)
 
         self.observation_space = map_to_space(gama_observation_map)
@@ -90,22 +94,32 @@ class GamaEnv(gym.Env):
         
         # Set the seed for the experiment
         if seed is not None: 
+            # print("The seed is", seed)
             gama_response = self.gama_server_client.expression(self.experiment_id, fr"seed <- {seed};")
             if gama_response["type"] != MessageTypes.CommandExecutedSuccessfully.value:
                 raise Exception("error while setting seed", gama_response)
         else:
-            gama_response = self.gama_server_client.expression(self.experiment_id, fr"seed <- {np.random.random()};")
+            s = np.random.random()
+            # print("The seed is random: ", s)
+            gama_response = self.gama_server_client.expression(self.experiment_id, fr"seed <- {s};")
             if gama_response["type"] != MessageTypes.CommandExecutedSuccessfully.value:
                 raise Exception("error while setting seed to 0", gama_response)
+            
+            gama_response = self.gama_server_client.expression(self.experiment_id, r"seed")
+            if gama_response["type"] != MessageTypes.CommandExecutedSuccessfully.value:
+                raise Exception("error while getting seed", gama_response)
+            print("The seed is now:", gama_response["content"])
         
         gama_response = self.gama_server_client.expression(self.experiment_id, r"GymAgent[0].state")
-        state = json.loads(gama_response["content"])
+        # state = json.loads(gama_response["content"])
+        state = gama_response["content"]
         state = self.observation_space.from_jsonable([state])[0]
         # print("State after reset:", state)
         # print("Is in observation space:", self.observation_space.contains(state))
 
         gama_response = self.gama_server_client.expression(self.experiment_id, r"GymAgent[0].info")
-        info = json.loads(gama_response["content"])
+        # info = json.loads(gama_response["content"])
+        info = gama_response["content"]
         
 
         return state, info
@@ -132,7 +146,10 @@ class GamaEnv(gym.Env):
         # print(f"Getting state took {end_get_data - start_get_data:.5f} seconds")
         if gama_response["type"] != MessageTypes.CommandExecutedSuccessfully.value:
             raise Exception("error while getting state", gama_response)
-        data = json.loads(gama_response["content"])
+        # data = json.loads(gama_response["content"])
+        data = gama_response["content"]
+        # print("data received from GAMA:", data)
+        # print("Data type:", type(data))
         state = self.observation_space.from_jsonable([data["State"]])[0]
         reward = data["Reward"]
         terminated = data["Terminated"]
