@@ -30,7 +30,7 @@ classifiers = [
 ]
 dependencies = [
     "gymnasium>=0.27.0",
-    "gama-client>=1.2.4",
+    "gama-client>=1.2.1",
     "numpy>=1.21.0",
 ]
 

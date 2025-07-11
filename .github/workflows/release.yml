@@ -88,29 +88,33 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.10"  # Update to your required Python version
+          python-version: "3.10"
 
-      - name: Install Poetry
+      - name: Install build tools
         run: |
-          curl -sSL https://install.python-poetry.org | python3 -
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
+          python -m pip install --upgrade pip
+          pip install build hatchling
 
-      - name: Set project version with Poetry
+      - name: Update version in pyproject.toml
+        working-directory: python_package
         run: |
-          poetry version ${{ needs.details.outputs.new_version }}
+          sed -i 's/version = "[^"]*"/version = "${{ needs.details.outputs.new_version }}"/' pyproject.toml
 
       - name: Install dependencies
-        run: poetry install --sync --no-interaction
+        working-directory: python_package
+        run: |
+          pip install -e .
 
       - name: Build source and wheel distributions
+        working-directory: python_package
         run: |
-          poetry build
+          python -m build
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: dist
-          path: dist/
+          path: python_package/dist/
 
   pypi-publish:
     name: Upload release to PyPI
