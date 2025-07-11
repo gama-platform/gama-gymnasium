@@ -93,3 +93,73 @@ Once it finished initialized, you can run your python script.
 You can go in the `tests` folder and in the `gamaenv_loads_simulation.py` and in the code change the value of `gama_port` to the port number you set yourself for gama-server in the previous section.
 Once it's done you can run this python script.
 If everything works you should see a few messages allocating a communication port in the console and then the program hang forever.
+
+## Development & Testing
+
+### Test Suite
+
+GAMA-Gymnasium comes with a comprehensive test suite that ensures the reliability and quality of the package. The tests are organized into several categories:
+
+#### Unit Tests
+- **Space Converters** (`test_space_converters.py`): Tests for converting between GAMA and Gymnasium space formats
+- **Space Validators** (`test_space_validators.py`): Tests for validating spaces and actions
+- **Client Communication** (`test_client.py`): Tests for GAMA server communication
+- **Message Handling** (`test_message_handler.py`): Tests for message validation and formatting
+- **Synchronous Wrapper** (`test_sync_wrapper.py`): Tests for async/sync conversion
+- **Monitoring Wrapper** (`test_monitoring_wrapper.py`): Tests for episode tracking and logging
+
+#### Integration Tests
+- **Full Workflow** (`test_full_integration.py`): End-to-end testing of the complete GAMA-Gymnasium pipeline
+
+#### Performance Tests
+- **Benchmarks** (`test_performance.py`): Performance testing and optimization validation
+
+### Running Tests
+
+To run the test suite, you'll need to install the development dependencies:
+
+```bash
+pip install -e ".[dev]"
+```
+
+Then you can run tests using the provided test runner:
+
+```bash
+# Run all tests
+python run_tests.py all
+
+# Run only unit tests
+python run_tests.py unit
+
+# Run fast tests (excluding slow performance tests)
+python run_tests.py fast
+
+# Check test dependencies
+python run_tests.py deps
+```
+
+Or using Make (Windows compatible):
+
+```bash
+# Run all tests with coverage
+make test
+
+# Run unit tests only
+make test-unit
+
+# Check code formatting and linting
+make lint
+```
+
+For detailed testing documentation, see [tests/README.md](tests/README.md).
+
+### Contributing
+
+When contributing to the project, please ensure:
+
+1. All tests pass: `python run_tests.py all`
+2. Code is properly formatted: `python run_tests.py format`
+3. No linting errors: `python run_tests.py lint`
+4. New features include appropriate tests
+
+The test suite includes comprehensive coverage of space conversion functionality, which is critical for ensuring compatibility between GAMA simulation environments and Gymnasium's standardized space definitions.

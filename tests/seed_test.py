@@ -99,6 +99,30 @@ async def main():
         if gama_response["type"] != MessageTypes.CommandExecutedSuccessfully.value:
             raise Exception("error while evaluating expression after reload", gama_response)
         print("Value of r:\t", gama_response["content"])
+
+    print("\nLoading 5 times...")
+    for i in range(5):
+
+        gama_response = client.load(exp_path, exp_name, console=False, runtime=True)
+        if gama_response["type"] != MessageTypes.CommandExecutedSuccessfully.value:
+            raise Exception("error while reloading", gama_response)
+        
+        n = random.randint(0, 999)
+        gama_response = client.expression(experiment_id, fr"seed <- {n};")
+        
+        gama_response = client.expression(experiment_id, r"seed")
+        if gama_response["type"] != MessageTypes.CommandExecutedSuccessfully.value:
+            raise Exception("error while evaluating expression after reload", gama_response)
+        print("Value of seed:\t", int(gama_response["content"]))
+
+        gama_response = client.step(experiment_id, sync=True)
+        if gama_response["type"] != MessageTypes.CommandExecutedSuccessfully.value:
+            raise Exception("error while stepping", gama_response)
+        
+        gama_response = client.expression(experiment_id, r"r")
+        if gama_response["type"] != MessageTypes.CommandExecutedSuccessfully.value:
+            raise Exception("error while evaluating expression after reload", gama_response)
+        print("Value of r:\t", gama_response["content"])
     
 if __name__ == "__main__":
     asyncio.run(main())
