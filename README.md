@@ -1,95 +1,171 @@
-# gama-gymnasium
-A generic [gymnasium](https://gymnasium.farama.org/) environment to manipulate simulations from the modeling platform [GAMA](https://gama-platform.org/).
-It leverages the python package [gama-client](https://pypi.org/project/gama-client/) to communicate with a [gama server](https://gama-platform.org/wiki/HeadlessServer) and provide the best performances.
+# GAMA-Gymnasium
 
-Based on previous work available [here](https://github.com/ptaillandier/policy-design/), our goal is to provide a generic and efficient platform that could be reused and adapted by anyone instead of an ad-hoc solution.
- 
-## Components
+[![Python Package](https://img.shields.io/pypi/v/gama-gymnasium)](https://pypi.org/project/gama-gymnasium/)
+[![License](https://img.shields.io/github/license/gama-platform/gama-gymnasium)](LICENSE)
 
-The core of the project is composed of two parts:
- - The python `gama-gymnasium` package, stored in the `python_package/` directory. It contains a [gymnasium](https://gymnasium.farama.org/) (a fork of OpenAI's gym) [environment](https://gymnasium.farama.org/api/env/) able to manipulate the modeling platform [GAMA](https://gama-platform.org/) to do your reinforcement learning work on GAMA simulation.
- - Some GAMA components, stored in the `gama/` folder file that contains the base components needed in your model to be manipulated by the gymnasium environment.
+**GAMA-Gymnasium** is a generic [Gymnasium](https://gymnasium.farama.org/) environment that enables the integration of simulations from the [GAMA](https://gama-platform.org/) modeling platform with reinforcement learning algorithms.
 
-In addition to this, examples are stored in the `examples/` directory, each example is itself composed of a complete GAMA model and its corresponding python reinforcement learning script.
+## 🎯 Purpose
 
-## Requirements
+This library allows researchers and developers to easily use GAMA models as reinforcement learning environments, leveraging the power of GAMA for agent-based modeling and the Python ecosystem for AI.
 
-For everything to work, you first need to have GAMA installed somewhere and able to run in headless mode.
-You can check the GAMA [download page](https://gama-platform.org/download) or [installation page](https://gama-platform.org/wiki/Installation) for detailed explanation and more advanced installations.
+## ⚡ Quick Start
 
-Your python environment should also have the package `gama-client` installed:
-```shell
-pip install gama-client
-```
-And be able to install this plugin as will be explained later.
+### Installation
 
-## How to run it
-
-### Install the `gama-gymnasium` plugin
-
-You will need to add gama-gymnasium to your package library.
-#### From pypi
-The easiest way to do is from the `pypi` package repository. To do so, just type:
-```python
+```bash
 pip install gama-gymnasium
 ```
-In your work environment to get the latest release.
 
-#### From git
+### Prerequisites
 
-you can also get the most up-to-date version by installing the package directly from this code.
-First you need to clone this repository:
+- **GAMA Platform**: Install GAMA from [gama-platform.org](https://gama-platform.org/download)
+- **Python 3.8+** with required dependencies
+
 ```bash
-git clone https://github.com/gama-platform/gama-gymnasium.git
+pip install gama-client gymnasium
 ```
 
-Then, in the projects's folder run:
-```
-pip install -e python_package
-```
+### Basic Usage
 
-#### Test the installation of the plugin
-
-You should now be able to import `gama_gymnasium` in your projects. To test it, in your python environment run:
-```
+```python
 import gama_gymnasium
+import gymnasium as gym
+
+# Create the environment
+env = gym.make('gama-gymnasium-v0', 
+               gama_model_path='your_model.gaml',
+               gama_port=6868)
+
+# Use as a standard Gymnasium environment
+obs, info = env.reset()
+for _ in range(100):
+    action = env.action_space.sample()
+    obs, reward, terminated, truncated, info = env.step(action)
+    if terminated or truncated:
+        obs, info = env.reset()
 ```
-Normally you shouldn't see any error message. If it's the case check that you have installed the packages mentioned in the requirements section.
 
-### Adapt your GAMA model to be compatible
+### GymansiumLink Skill
 
-Add `gama gymnasium.gaml` to your project and create a species that will have `GymnasiumCommunication` as a parent.
-It should look similar to this:
-```
-import '../path/to/gama gymnasium.gaml'
+The `GymansiumLink` skill is a GAMA skill of the `gama_gymnasium` plugin that allows GAMA agents to interact with Gymnasium environments. It adds 8 varriables and 1 action to the agent
 
-...
+Structure of the skill:
 
-species GymnasiumManager parent:GymnasiumCommunication {
+```gaml
+species GymAgent skills:[GymnasiumLink]{
+    map action_space;
+    map observation_space
 
+    unknown state;
+    float reward;
+    boolean terminated;
+    boolean truncated;
+    map info;
+
+    unknown next_action;
+
+    action update_data;
 }
 ```
 
-TODO: @ptaillandier
+### GAMA Configuration
 
-### Implements the `gamaEnv` class in your python RL project
+1. **Add the GAMA component** to your model:
+    Make sure you have the GAMA plugin gama_gymnasium and add a species `GymAgent` with the skill `GymnasiumLink` to your model:
 
-TODO: @meritxell.vinyals
+    ```gaml
+    species GymAgent skills:[GymnasiumLink];
+    ```
 
-### Run GAMA in server mode
+    Set up the `action_space` and `observation_space`:
 
-You will need to have GAMA running in server mode for the communication to work.
-To do so, go to your gama installation folder, and in the `headless` folder run the script `gama-headless.sh` if you are on Linux or MacOS and `gama-headless.bat` if you are on Windows.
-The command should look like this:
-```shell
-gama-headless.sh -socket 6868
+    ```gaml
+    global {
+        init{
+            create GymAgent;
+            GymAgent[0].action_space <- ["type"::"Discrete", "n"::4];
+            GymAgent[0].observation_space <- ["type"::"Box", "low"::0, "high"::grid_size, "shape"::[2], "dtype"::"int"];
+        }
+    }
+    ```
+
+    Update the gym agent's data after the action is completed:
+
+    ```gaml
+    ask GymAgent[0] {
+        do update_data;
+    }
+    ```
+
+2. **Launch GAMA in server mode**:
+
+```bash
+# Linux/MacOS
+./gama-headless.sh -socket 6868
+
+# Windows
+gama-headless.bat -socket 6868
 ```
-the `-socket` parameter indicates that you want to run a GAMA server, and `6868` is just a random port number that will be used for the connexion, you can switch it to any other port you want.
 
-Once it finished initialized, you can run your python script.
+## 📁 Project Structure
 
-### Test the whole pipeline
+```text
+gama-gymnasium/
+├── 📁 python_package/     # Main Python package
+├── 📁 gama/              # Required GAMA components
+├── 📁 examples/          # Complete examples and tutorial
+├── 📁 tests/             # Unit and integration tests
+└── 📁 src/               # Development source code
+```
 
-You can go in the `tests` folder and in the `gamaenv_loads_simulation.py` and in the code change the value of `gama_port` to the port number you set yourself for gama-server in the previous section.
-Once it's done you can run this python script.
-If everything works you should see a few messages allocating a communication port in the console and then the program hang forever.
+## 📚 Documentation and Examples
+
+### 🚀 Tutorials and Examples
+
+| Example                          | Description                                           | Documentation                                 |
+| -------------------------------- | ----------------------------------------------------- | --------------------------------------------- |
+| **Basic Example**          | Introduction to GAMA-Gymnasium integration            | [📖 README](examples/basic_example/README.md)    |
+| **CartPole DQN**           | Deep Q-Network implementation on CartPole environment | [📁 Folder](examples/cartpole%20DQN/)            |
+| **Frozen Lake Q-Learning** | Q-Learning on Frozen Lake environment                 | [📁 Folder](examples/frozen%20lake%20QLearning/) |
+
+### 📖 Detailed Guides
+
+- **[Basic Example Guide](examples/basic_example/README.md)**: Complete tutorial for creating your first environment
+- **[Direct GAMA Test](examples/basic_example/README_basic_test.md)**: Low-level communication with GAMA
+- **[Python Package](python_package/README.md)**: Technical documentation of the package
+
+## 🛠 Advanced Installation
+
+### From Source Code
+
+```bash
+git clone https://github.com/gama-platform/gama-gymnasium.git
+cd gama-gymnasium
+pip install -e python_package/
+```
+
+## 🧪 Testing and Validation
+
+```bash
+# Run tests
+python -m pytest tests/
+
+# Simple integration test
+python tests/gamaenv_loads_simulation.py
+```
+
+## 🤝 Contributing
+
+Contributions are welcome! Check the [issues](https://github.com/gama-platform/gama-gymnasium/issues) to see how you can help.
+
+## 🔗 Useful Links
+
+- [GAMA Platform](https://gama-platform.org/)
+- [Gymnasium Documentation](https://gymnasium.farama.org/)
+- [GAMA-Client PyPI
+  ](https://pypi.org/project/gama-client/)
+
+---
+
+For more technical details and practical examples, check the documentation in the `examples/` and `python_package/` folders.
