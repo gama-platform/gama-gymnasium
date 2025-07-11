@@ -9,12 +9,19 @@
 name: release
 
 on:
-  push:
-    tags:
-      - "[0-9]+.[0-9]+.[0-9]+"
-      - "[0-9]+.[0-9]+.[0-9]+a[0-9]+"
-      - "[0-9]+.[0-9]+.[0-9]+b[0-9]+"
-      - "[0-9]+.[0-9]+.[0-9]+rc[0-9]+"
+  # push:
+  #   tags:
+  #     - "[0-9]+.[0-9]+.[0-9]+"
+  #     - "[0-9]+.[0-9]+.[0-9]+a[0-9]+"
+  #     - "[0-9]+.[0-9]+.[0-9]+b[0-9]+"
+  #     - "[0-9]+.[0-9]+.[0-9]+rc[0-9]+"
+  workflow_dispatch: # For manual trigger
+    inputs:
+      BUMP_VERSION_NUMBER:
+        description: "Version number to bump to (if empty, publish with git number)"
+        required: false
+        default: ""
+        type: string
 
 env:
   PACKAGE_NAME: gama-gymnasium
@@ -48,8 +55,20 @@ jobs:
             echo "Suffix is $SUFFIX"
             echo "Tag name is $TAG_NAME"
           else
-            echo "No tag found"
-            exit 1
+            if [  -z "${{ inputs.BUMP_VERSION_NUMBER }}" ]; then
+              TAG_NAME="${{ inputs.BUMP_VERSION_NUMBER }}"
+              NEW_VERSION=$(echo $TAG_NAME | awk -F- '{print $1}')
+              SUFFIX=$(echo $TAG_NAME | grep -oP '[a-z]+[0-9]+' || echo "")
+              SUFFIX=""
+              echo "new_version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
+              echo "suffix=$SUFFIX" >> "$GITHUB_OUTPUT"
+              echo "Version is $NEW_VERSION
+              echo "Suffix is $SUFFIX"
+              echo "Tag name is $TAG_NAME"
+            else
+              echo "No tag found"
+              exit 1
+            fi
           fi
       - name: Fetch information from PyPI
         run: |
@@ -84,6 +103,11 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.10"
+          
+      - name: Bump package version
+        if: "${{ inputs.BUMP_VERSION_NUMBER != '' }}"
+        working-directory: ./python
+        run: sed "s/^version =.*/version = \"${{ inputs.BUMP_VERSION_NUMBER }}\"/g" ${{ github.workspace }}/python_package/pyproject.toml
 
       - name: Install build tools
         run: |
@@ -104,6 +128,19 @@ jobs:
         working-directory: python_package
         run: |
           python -m build
+
+      - name: Bump package version
+        if: "${{ inputs.BUMP_VERSION_NUMBER != '' }}"
+        working-directory: ./python
+        run: |
+          git config --global user.email "my.gama.bot@gmail.com"
+          git config --global user.name "GAMA Bot"
+          git remote set-url origin https://gama-bot:$BOT_TOKEN@github.com/gama-platform/gama.clients.git
+          git add ${{ github.workspace }}/python_package/pyproject.toml
+          git commit -m "Bump package version to ${{ inputs.BUMP_VERSION_NUMBER }}"
+          git push
+        env:
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
