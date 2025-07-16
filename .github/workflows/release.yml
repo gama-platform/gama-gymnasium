@@ -115,17 +115,17 @@ jobs:
           pip install build hatchling
 
       - name: Update version in pyproject.toml
-        working-directory: python_package
+        working-directory: src
         run: |
           sed -i 's/version = "[^"]*"/version = "${{ needs.details.outputs.new_version }}"/' pyproject.toml
 
       - name: Install dependencies
-        working-directory: python_package
+        working-directory: src
         run: |
           pip install -e .
 
       - name: Build source and wheel distributions
-        working-directory: python_package
+        working-directory: src
         run: |
           python -m build
 
@@ -136,7 +136,7 @@ jobs:
           git config --global user.email "my.gama.bot@gmail.com"
           git config --global user.name "GAMA Bot"
           git remote set-url origin https://gama-bot:$BOT_TOKEN@github.com/gama-platform/gama.clients.git
-          git add ${{ github.workspace }}/python_package/pyproject.toml
+          git add ${{ github.workspace }}/src/pyproject.toml
           git commit -m "Bump package version to ${{ inputs.BUMP_VERSION_NUMBER }}"
           git push
         env:
