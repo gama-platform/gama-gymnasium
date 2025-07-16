@@ -107,7 +107,7 @@ jobs:
       - name: Bump package version
         if: "${{ inputs.BUMP_VERSION_NUMBER != '' }}"
         working-directory: ./python
-        run: sed "s/^version =.*/version = \"${{ inputs.BUMP_VERSION_NUMBER }}\"/g" ${{ github.workspace }}/python_package/pyproject.toml
+        run: sed "s/^version =.*/version = \"${{ inputs.BUMP_VERSION_NUMBER }}\"/g" ${{ github.workspace }}/src/pyproject.toml
 
       - name: Install build tools
         run: |
@@ -146,7 +146,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: dist
-          path: python_package/dist/
+          path: src/dist/
 
   pypi-publish:
     name: Upload release to PyPI
