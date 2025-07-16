@@ -33,7 +33,7 @@ async def main():
                   gaml_experiment_name=exp_name,  # Name of the experiment to run
                   gaml_experiment_parameters=exp_parameters,  # Parameters to pass to GAMA
                   gama_ip_address="localhost",  # GAMA server address
-                  gama_port=1001)  # Communication port
+                  gama_port=1000)  # Communication port
     
     # Display information about the observation space
     print("Observation space:", env.observation_space)

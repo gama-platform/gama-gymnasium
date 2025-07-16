@@ -56,7 +56,6 @@ examples = [
 [tool.hatch.build]
 include = [
   "gama_gymnasium/*.py",
-  "gama_gymnasium/**/*.py",
 ]
 exclude = [
   "**/__pycache__",

@@ -72,32 +72,31 @@ species GymAgent skills:[GymnasiumLink]{
 ### GAMA Configuration
 
 1. **Add the GAMA component** to your model:
-    Make sure you have the GAMA plugin gama_gymnasium and add a species `GymAgent` with the skill `GymnasiumLink` to your model:
+   Make sure you have the GAMA plugin gama_gymnasium and add a species `GymAgent` with the skill `GymnasiumLink` to your model:
 
-    ```gaml
-    species GymAgent skills:[GymnasiumLink];
-    ```
+   ```gaml
+   species GymAgent skills:[GymnasiumLink];
+   ```
 
-    Set up the `action_space` and `observation_space`:
+   Set up the `action_space` and `observation_space`:
 
-    ```gaml
-    global {
-        init{
-            create GymAgent;
-            GymAgent[0].action_space <- ["type"::"Discrete", "n"::4];
-            GymAgent[0].observation_space <- ["type"::"Box", "low"::0, "high"::grid_size, "shape"::[2], "dtype"::"int"];
-        }
-    }
-    ```
+   ```gaml
+   global {
+       init{
+           create GymAgent;
+           GymAgent[0].action_space <- ["type"::"Discrete", "n"::4];
+           GymAgent[0].observation_space <- ["type"::"Box", "low"::0, "high"::grid_size, "shape"::[2], "dtype"::"int"];
+       }
+   }
+   ```
 
-    Update the gym agent's data after the action is completed:
+   Update the gym agent's data after the action is completed:
 
-    ```gaml
-    ask GymAgent[0] {
-        do update_data;
-    }
-    ```
-
+   ```gaml
+   ask GymAgent[0] {
+       do update_data;
+   }
+   ```
 2. **Launch GAMA in server mode**:
 
 ```bash
@@ -112,28 +111,28 @@ gama-headless.bat -socket 6868
 
 ```text
 gama-gymnasium/
-├── 📁 python_package/     # Main Python package
-├── 📁 gama/              # Required GAMA components
-├── 📁 examples/          # Complete examples and tutorial
-├── 📁 tests/             # Unit and integration tests
-└── 📁 src/               # Development source code
+├── 📁 src/                # Main Python package source code
+├── 📁 tests/              # Comprehensive test suite
+├── 📁 examples/           # Complete examples and tutorials
+└── � pytest.ini         # Testing configuration
 ```
 
 ## 📚 Documentation and Examples
 
 ### 🚀 Tutorials and Examples
 
-| Example                          | Description                                           | Documentation                                 |
-| -------------------------------- | ----------------------------------------------------- | --------------------------------------------- |
-| **Basic Example**          | Introduction to GAMA-Gymnasium integration            | [📖 README](examples/basic_example/README.md)    |
-| **CartPole DQN**           | Deep Q-Network implementation on CartPole environment | [📁 Folder](examples/cartpole%20DQN/)            |
-| **Frozen Lake Q-Learning** | Q-Learning on Frozen Lake environment                 | [📁 Folder](examples/frozen%20lake%20QLearning/) |
+| Example                          | Description                                           | Documentation                                          |
+| -------------------------------- | ----------------------------------------------------- | ------------------------------------------------------ |
+| **Basic Example**          | Introduction to GAMA-Gymnasium integration            | [📖 README](examples/basic_example/README.md)             |
+| **CartPole DQN**           | Deep Q-Network implementation on CartPole environment | [📖 README](examples/cartpole%20DQN/README.md)            |
+| **Frozen Lake Q-Learning** | Q-Learning on Frozen Lake environment                 | [📖 README](examples/frozen%20lake%20QLearning/README.md) |
 
 ### 📖 Detailed Guides
 
 - **[Basic Example Guide](examples/basic_example/README.md)**: Complete tutorial for creating your first environment
 - **[Direct GAMA Test](examples/basic_example/README_basic_test.md)**: Low-level communication with GAMA
-- **[Python Package](python_package/README.md)**: Technical documentation of the package
+- **[Source Code Documentation](src/README.md)**: Technical documentation of the package structure
+- **[Testing Guide](tests/README.md)**: Comprehensive testing framework and best practices
 
 ## 🛠 Advanced Installation
 
@@ -142,17 +141,14 @@ gama-gymnasium/
 ```bash
 git clone https://github.com/gama-platform/gama-gymnasium.git
 cd gama-gymnasium
-pip install -e python_package/
+pip install -e src/ 
 ```
 
 ## 🧪 Testing and Validation
 
 ```bash
 # Run tests
-python -m pytest tests/
-
-# Simple integration test
-python tests/gamaenv_loads_simulation.py
+python tests/test_manager.py --quick
 ```
 
 ## 🤝 Contributing
@@ -163,9 +159,8 @@ Contributions are welcome! Check the [issues](https://github.com/gama-platform/g
 
 - [GAMA Platform](https://gama-platform.org/)
 - [Gymnasium Documentation](https://gymnasium.farama.org/)
-- [GAMA-Client PyPI
-  ](https://pypi.org/project/gama-client/)
+- [GAMA-Client PyPI](https://pypi.org/project/gama-client/)
 
 ---
 
-For more technical details and practical examples, check the documentation in the `examples/` and `python_package/` folders.
+For more technical details and practical examples, check the documentation in the [`examples/`](examples/) and [`src/`](src/) folders, or explore our comprehensive [testing framework](tests/README.md).
