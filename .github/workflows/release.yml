@@ -180,6 +180,24 @@ jobs:
           name: dist
           path: ${{ github.workspace }}/dist/
 
+      - name: Create and push tag (if manual)
+        if: "${{ inputs.BUMP_VERSION_NUMBER != '' }}"
+        run: |
+          git config --global user.email "my.gama.bot@gmail.com"
+          git config --global user.name "GAMA Bot"
+          
+          # Créer le tag localement
+          git tag -a "v${{ needs.details.outputs.new_version }}" -m "Release version ${{ needs.details.outputs.new_version }}"
+          
+          # Pousser le tag vers GitHub (si token disponible)
+          if [ -n "${{ secrets.BOT_TOKEN }}" ]; then
+            git remote set-url origin https://gama-bot:${{ secrets.BOT_TOKEN }}@github.com/${{ github.repository }}.git
+            git push origin "v${{ needs.details.outputs.new_version }}"
+            echo "Tag v${{ needs.details.outputs.new_version }} created and pushed"
+          else
+            echo "No BOT_TOKEN available, tag created locally only"
+          fi
+
       - name: Release
         uses: softprops/action-gh-release@v2
         with:
