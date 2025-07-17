@@ -1,9 +1,10 @@
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
 [project]
 name = "gama-gymnasium"
-version = "0.1.0"
+version = "0.1.1"
 authors = [
   { name="Baptiste Lesquoy", email="baptiste.lesquoy@ird.fr" },
   { name="Meritxell Vinyals", email="meritxell.vinyals@inrae.fr" },
@@ -42,6 +43,7 @@ dev = [
     "isort",
     "flake8",
 ]
+
 examples = [
     "torch>=1.9.0",
     "matplotlib>=3.3.0",
@@ -53,9 +55,10 @@ examples = [
 "Bug Tracker" = "https://github.com/gama-platform/gama-gymnasium/issues"
 "Documentation" = "https://github.com/gama-platform/gama-gymnasium#readme"
 "GAMA Platform" = "https://gama-platform.org/"
+
 [tool.hatch.build]
 include = [
-  "gama_gymnasium/*.py",
+  "src/gama_gymnasium/*.py",
 ]
 exclude = [
   "**/__pycache__",
@@ -64,7 +67,7 @@ exclude = [
 ]
 
 [tool.hatch.build.targets.wheel]
-packages = ["gama_gymnasium"]
+packages = ["src/gama_gymnasium"]
 
 [tool.black]
 line-length = 88

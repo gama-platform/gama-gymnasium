@@ -114,6 +114,8 @@ gama-gymnasium/
 ├── 📁 src/                # Main Python package source code
 ├── 📁 tests/              # Comprehensive test suite
 ├── 📁 examples/           # Complete examples and tutorials
+├── pyproject.toml	  # Python package configuration
+├── LICENSE               # Package license
 └── � pytest.ini         # Testing configuration
 ```
 

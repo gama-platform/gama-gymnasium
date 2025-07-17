@@ -101,7 +101,6 @@ jobs:
           pip install build hatchling
 
       - name: Update version in pyproject.toml
-        working-directory: src
         run: |
           echo "Updating version to: ${{ needs.details.outputs.new_version }}"
           sed -i 's/version = "[^"]*"/version = "${{ needs.details.outputs.new_version }}"/' pyproject.toml
@@ -109,12 +108,10 @@ jobs:
           grep "version =" pyproject.toml
 
       - name: Install dependencies
-        working-directory: src
         run: |
           pip install -e .
 
       - name: Build source and wheel distributions
-        working-directory: src
         run: |
           python -m build
 
@@ -123,7 +120,7 @@ jobs:
         run: |
           git config --global user.email "my.gama.bot@gmail.com"
           git config --global user.name "GAMA Bot"
-          git add src/pyproject.toml
+          git add pyproject.toml
           git commit -m "Bump package version to ${{ needs.details.outputs.new_version }}" || echo "No changes to commit"
           # Only push if there are changes and token is available
           if [ -n "${{ secrets.BOT_TOKEN }}" ]; then
@@ -137,7 +134,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: dist
-          path: src/dist/
+          path: dist/
 
   pypi-publish:
     name: Upload release to PyPI

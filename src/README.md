@@ -6,8 +6,6 @@ This directory contains the main source code for the GAMA-Gymnasium package, whi
 
 ```
 src/
-├── pyproject.toml          # Python package configuration
-├── LICENSE                 # Package license
 ├── README.md              # This documentation
 └── gama_gymnasium/        # Main Python module
     ├── __init__.py        # Package initialization
@@ -20,25 +18,33 @@ src/
 ## 🧩 Module Components
 
 ### `gama_env.py`
+
 Main Gymnasium environment class that interfaces with GAMA simulations:
+
 - Implements standard Gymnasium environment API
 - Handles GAMA server communication
 - Manages environment lifecycle (reset, step, close)
 
 ### `gama_client_wrapper.py`
+
 Wrapper around gama-client for robust communication:
+
 - Manages GAMA server connections
 - Handles error recovery and reconnection
 - Provides simplified API for environment operations
 
 ### `space_converter.py`
+
 Converts between GAMA and Gymnasium space formats:
+
 - Supports all standard Gymnasium spaces (Box, Discrete, MultiDiscrete, etc.)
 - Handles data type conversions
 - Validates space definitions
 
 ### `exceptions.py`
+
 Custom exception hierarchy for clear error handling:
+
 - `GamaEnvironmentError`: Base exception class
 - `GamaConnectionError`: Connection-related errors
 - `GamaSpaceError`: Space definition/conversion errors
@@ -53,18 +59,22 @@ Custom exception hierarchy for clear error handling:
 ## 🛠️ Development
 
 ### Package Configuration
+
 The `pyproject.toml` file contains:
+
 - Package metadata and dependencies
 - Build system configuration
 - Entry points and optional dependencies
 
 ### Installation for Development
+
 ```bash
 # From the repository root
 pip install -e src/
 ```
 
 ### Running Tests
+
 ```bash
 # Run the comprehensive test suite
 python tests/test_manager.py --all
