@@ -48,7 +48,7 @@ for _ in range(100):
 
 ### GymansiumLink Skill
 
-The `GymansiumLink` skill is a GAMA skill of the `gama_gymnasium` plugin that allows GAMA agents to interact with Gymnasium environments. It adds 8 varriables and 1 action to the agent
+The `GymansiumLink` skill is a GAMA skill of the `gama_gymnasium` plugin that allows GAMA agents to interact with Gymnasium environments. It adds 8 variables and 1 action to the agent
 
 Structure of the skill:
 
