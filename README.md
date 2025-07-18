@@ -83,9 +83,10 @@ species GymAgent skills:[GymnasiumLink]{
    ```gaml
    global {
        init{
-           create GymAgent;
-           GymAgent[0].action_space <- ["type"::"Discrete", "n"::4];
-           GymAgent[0].observation_space <- ["type"::"Box", "low"::0, "high"::grid_size, "shape"::[2], "dtype"::"int"];
+           create GymAgent{
+             action_space <- ["type"::"Discrete", "n"::4];
+             observation_space <- ["type"::"Box", "low"::0, "high"::grid_size, "shape"::[2], "dtype"::"int"];
+           }
        }
    }
    ```
