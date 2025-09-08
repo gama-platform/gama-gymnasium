@@ -11,6 +11,8 @@ from .exceptions import (
     GamaCommandError,
     SpaceConversionError
 )
+from .gama_client_wrapper import GamaClientWrapper
+from .space_converter import SpaceConverter
 
 # Register the environment with Gymnasium
 register(

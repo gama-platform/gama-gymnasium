@@ -198,6 +198,9 @@ jobs:
       - name: Release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: "v${{ needs.details.outputs.new_version }}"
           files: ${{ github.workspace }}/dist/*
-          body: ${{ needs.details.outputs.tag_name }} 
+          body: "Release ${{ needs.details.outputs.tag_name }}"
           generate_release_notes: true
+          draft: false
+          prerelease: false

@@ -167,3 +167,4 @@ class GamaClientWrapper:
                 print(f"Warning: Error closing GAMA connection: {e}")
             finally:
                 self.client = None
+                

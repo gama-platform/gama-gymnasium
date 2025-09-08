@@ -3,6 +3,7 @@ Main GamaEnv class implementing the Gymnasium interface for GAMA simulations.
 """
 import time
 from typing import Any, SupportsFloat
+import traceback
 
 import numpy as np
 import gymnasium as gym
@@ -81,10 +82,17 @@ class GamaEnv(gym.Env):
         state = self.gama_client.get_state(self.experiment_id)
         info = self.gama_client.get_info(self.experiment_id)
         
-        # Convert state to proper format
-        state = self.observation_space.from_jsonable([state])[0]
+        # print("GAMA experiment reset. Initial state:", state)
         
-        return state, info
+        # Convert state using the space converter
+        try:
+            obs = self.space_converter.convert_gama_to_gym_observation(self.observation_space, state)
+        except Exception as e:
+            print(f"Conversion error: {e}")
+            traceback.print_exc()
+            raise GamaEnvironmentError(f"Failed to convert observation: {e}")
+        
+        return obs, info
 
     def step(self, action: ActType) -> tuple[ObsType, SupportsFloat, bool, bool, dict[str, Any]]:
         """Execute one step in the environment."""
@@ -94,8 +102,14 @@ class GamaEnv(gym.Env):
         # Execute step in GAMA
         step_data = self.gama_client.execute_step(self.experiment_id, gama_action)
         
-        # Extract results
-        state = self.observation_space.from_jsonable([step_data["State"]])[0]
+        # Extract and convert observation using the space converter
+        try:
+            state = self.space_converter.convert_gama_to_gym_observation(self.observation_space, step_data["State"])
+        except Exception as e:
+            print(f"Step conversion error: {e}")
+            traceback.print_exc()
+            raise GamaEnvironmentError(f"Failed to convert step observation: {e}")
+        
         reward = step_data["Reward"]
         terminated = step_data["Terminated"]
         truncated = step_data["Truncated"]
