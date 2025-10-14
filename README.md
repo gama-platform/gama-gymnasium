@@ -46,33 +46,43 @@ for _ in range(100):
         obs, info = env.reset()
 ```
 
-### GymnasiumLink Skill
+### GymAgent
 
-The `GymnasiumLink` skill is a GAMA skill of the `gama_gymnasium` plugin that allows GAMA agents to interact with Gymnasium environments. It adds 8 variables and 1 action to the agent
+The `GymAgent` is a GAMA agent that is required in the model to enable interaction between the simulation's learning agent and the Gymnasium environment. It has nine variables and one action.The `GymAgent` is a GAMA agent required in the model to allow the interaction between the learning agent of the simulation and Gymnasium environments. It have 9 variables and 1 action
 
-Structure of the skill:
+Structure of the agent:
 
 ```gaml
 species GymAgent skills:[GymnasiumLink]{
-    map action_space;
-    map observation_space
+	map<string, unknown> action_space;
+	map<string, unknown> observation_space;
 
-    unknown state;
-    float reward;
-    boolean terminated;
-    boolean truncated;
-    map info;
+	unknown state;
+	float reward;
+	bool terminated;
+	bool truncated;
+	map<string, unknown> info;
 
-    unknown next_action;
+	unknown next_action;
 
-    action update_data;
+	map<string, unknown> data;
+
+	action update_data {
+		data <- [
+			"State"::state,
+			"Reward"::reward,
+			"Terminated"::terminated,
+			"Truncated"::truncated,
+			"Info"::info
+		];
+	}
 }
 ```
 
 ### GAMA Configuration
 
 1. **Add the GAMA component** to your model:
-   Make sure you have the GAMA plugin gama_gymnasium and add a species `GymAgent` with the skill `GymnasiumLink` to your model:
+   Make sure you have added the species `GymAgent` described above to your model:
 
    ```gaml
    species GymAgent skills:[GymnasiumLink];

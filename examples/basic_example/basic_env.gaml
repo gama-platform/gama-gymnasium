@@ -16,12 +16,18 @@ global {
 	int grid_size <- 4;
 	
 	init {
+		
+		create GymAgent {
+			action_space <- ["type"::"Discrete", "n"::4];
+			observation_space <- ["type"::"Box", "low"::0, "high"::grid_size, "shape"::[2], "dtype"::"int"];
+		}
+		
 		// Create a GymAgent to handle the Gymnasium interface
-		create GymAgent;
-		// Define action space: 4 discrete actions (up, down, right, left)
-		GymAgent[0].action_space <- ["type"::"Discrete", "n"::4];
-		// Define observation space: 2D coordinates in the grid (x,y positions)
-		GymAgent[0].observation_space <- ["type"::"Box", "low"::0, "high"::grid_size, "shape"::[2], "dtype"::"int"];
+//		create GymAgent;
+//		// Define action space: 4 discrete actions (up, down, right, left)
+//		GymAgent[0].action_space <- ["type"::"Discrete", "n"::4];
+//		// Define observation space: 2D coordinates in the grid (x,y positions)
+//		GymAgent[0].observation_space <- ["type"::"Box", "low"::0, "high"::grid_size, "shape"::[2], "dtype"::"int"];
 		
 		// Create the learning agent that will move in the environment
 		create target_seeking_agent;
@@ -46,7 +52,24 @@ global {
 }
 
 // Agent species that handles the Gymnasium interface
-species GymAgent skills:[GymnasiumLink];
+species GymAgent {
+	map<string, unknown> action_space;
+	map<string, unknown> observation_space;
+	
+	unknown state;
+	float reward;
+	bool terminated;
+	bool truncated;
+	map<string, unknown> info;
+	
+	unknown next_action;
+	
+	map<string, unknown> data;
+	
+	action update_data {
+		data <- ["State"::state, "Reward"::reward, "Terminated"::terminated, "Truncated"::truncated, "Info"::info];
+	}
+}
 
 // Agent that seeks a target cell in the grid environment
 species target_seeking_agent {
@@ -134,6 +157,11 @@ grid my_grid width: grid_size height: grid_size{
 
 // Experiment for testing the environment without external connections
 experiment test_env {
+	init {
+		write "action space: " + GymAgent[0].action_space;
+		write "observation space: " + GymAgent[0].observation_space;
+	}
+	
     output {
     	display Render type: 2d {
     		grid my_grid border: #black;

@@ -83,12 +83,28 @@ This reflex (automatically executed at each simulation step) makes the target se
 
 **Agent Species**:
 
-1. **GymAgent**: A special agent with the `GymnasiumLink` skill that handles the communication protocol:
+1. **GymAgent**: A special agent that handles the communication protocol:
 
    ```gaml
-   species GymAgent skills:[GymnasiumLink];
-   ```
+   species GymAgent {
+   	map<string, unknown> action_space;
+   	map<string, unknown> observation_space;
 
+   	unknown state;
+   	float reward;
+   	bool terminated;
+   	bool truncated;
+   	map<string, unknown> info;
+
+   	unknown next_action;
+
+   	map<string, unknown> data;
+
+   	action update_data {
+   		data <- ["State"::state, "Reward"::reward, "Terminated"::terminated, "Truncated"::truncated, "Info"::info];
+   	}
+   }
+   ```
 2. **Target Seeking Agent**: The agent that moves in the grid seeking the target:
 
    ```gaml
@@ -277,7 +293,6 @@ This ensures that the `main` function is only run when this script is executed d
    ```bash
    pip install gama_gymnasium
    ```
-
 2. Launch a [GAMA Headless server](https://gama-platform.org/wiki/HeadlessServer) with the correct communication port:
 
    Go to the `headless` directory in your Gama installation folder and run the script `gama-headless.sh` (or `gama-headless.bat`) with the argument `-socket` followed by the port number you want your Gama server to run on.
@@ -351,3 +366,59 @@ Once you understand this basic example, you can:
 - **[📦 Source Code](../../src/README.md)**: Technical details about the package structure
 - **[🎯 CartPole DQN Example](../cartpole%20DQN/README.md)**: Advanced reinforcement learning example
 - **[🔧 Direct GAMA Test](README_basic_test.md)**: Low-level GAMA communication example
+
+species GymAgent {
+
+    map<string,unknown> action_space;
+
+    map<string,unknown> observation_space;
+
+    unknownstate;
+
+    floatreward;
+
+    boolterminated;
+
+    booltruncated;
+
+    map<string,unknown> info;
+
+    unknownnext_action;
+
+    map<string,unknown> data;
+
+    action update_data {
+
+    data <- ["State"::state,"Reward"::reward,"Terminated"::terminated,"Truncated"::truncated,"Info"::info];
+
+    }
+
+}
+
+species GymAgent {
+
+    map<string,unknown> action_space;
+
+    map<string,unknown> observation_space;
+
+    unknownstate;
+
+    floatreward;
+
+    boolterminated;
+
+    booltruncated;
+
+    map<string,unknown> info;
+
+    unknownnext_action;
+
+    map<string,unknown> data;
+
+    action update_data {
+
+    data <- ["State"::state,"Reward"::reward,"Terminated"::terminated,"Truncated"::truncated,"Info"::info];
+
+    }
+
+}

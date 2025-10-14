@@ -62,7 +62,30 @@ global {
 	}
 }
 
-species GymAgent skills:[GymnasiumLink];
+species GymAgent {
+	map<string, unknown> action_space;
+	map<string, unknown> observation_space;
+
+	unknown state;
+	float reward;
+	bool terminated;
+	bool truncated;
+	map<string, unknown> info;
+
+	unknown next_action;
+
+	map<string, unknown> data;
+
+	action update_data {
+		data <- [
+			"State"::state,
+			"Reward"::reward,
+			"Terminated"::terminated,
+			"Truncated"::truncated,
+			"Info"::info
+		];
+	}
+}
 
 species Cartpole {
 	
