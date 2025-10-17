@@ -53,7 +53,7 @@ The `GymAgent` is a GAMA agent that is required in the model to enable interacti
 Structure of the agent:
 
 ```gaml
-species GymAgent skills:[GymnasiumLink]{
+species GymAgent{
 	map<string, unknown> action_space;
 	map<string, unknown> observation_space;
 
@@ -85,7 +85,7 @@ species GymAgent skills:[GymnasiumLink]{
    Make sure you have added the species `GymAgent` described above to your model:
 
    ```gaml
-   species GymAgent skills:[GymnasiumLink];
+   species GymAgent;
    ```
 
    Set up the `action_space` and `observation_space`:
