@@ -138,6 +138,8 @@ gama-gymnasium/
 | -------------------------------- | ----------------------------------------------------- | ------------------------------------------------------ |
 | **Basic Example**          | Introduction to GAMA-Gymnasium integration            | [📖 README](examples/basic_example/README.md)             |
 | **CartPole DQN**           | Deep Q-Network implementation on CartPole environment | [📖 README](examples/cartpole%20DQN/README.md)            |
+| **Frozen Lake Q-Learning** | An example of Q-Learning purely in gama |  |
+
 
 ### 📖 Detailed Guides
 
