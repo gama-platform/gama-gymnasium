@@ -48,7 +48,7 @@ for _ in range(100):
 
 ### GymAgent
 
-The `GymAgent` is a GAMA agent that is required in the model to enable interaction between the simulation's learning agent and the Gymnasium environment. It has nine variables and one action.The `GymAgent` is a GAMA agent required in the model to allow the interaction between the learning agent of the simulation and Gymnasium environments. It have 9 variables and 1 action
+The `GymAgent` is a GAMA agent that is required in the model to enable interaction between the simulation's learning agent and the Gymnasium environment. It has nine variables and one action. The `GymAgent` is a GAMA agent required in the model to allow the interaction between the learning agent of the simulation and Gymnasium environments. It have 9 variables and 1 action
 
 Structure of the agent:
 
@@ -138,7 +138,6 @@ gama-gymnasium/
 | -------------------------------- | ----------------------------------------------------- | ------------------------------------------------------ |
 | **Basic Example**          | Introduction to GAMA-Gymnasium integration            | [📖 README](examples/basic_example/README.md)             |
 | **CartPole DQN**           | Deep Q-Network implementation on CartPole environment | [📖 README](examples/cartpole%20DQN/README.md)            |
-| **Frozen Lake Q-Learning** | Q-Learning on Frozen Lake environment                 | [📖 README](examples/frozen%20lake%20QLearning/README.md) |
 
 ### 📖 Detailed Guides
 
