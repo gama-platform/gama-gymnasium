@@ -20,7 +20,7 @@ global {
 	
 	
 	//Q-Learning parameter
-	float learning_rate <- 1.0 min:0.0 max:1.0; // setting it to 1 as we are in a deterministic environment
+	float learning_rate <- 0.3 min:0.0 max:1.0; // setting it to 1 in a purely deterministic environment
 	float discount_factor <- 0.8 min:0.0 max:1.0;
 	float exploration_rate <- 0.0 min:0.0 max:1.0;
 	
@@ -104,13 +104,13 @@ species elf {
 	
 	float reward {
 		if (my_cell.state = "G") {
-			return 1.0;
+			return #max_float; // best reward possible
 		}
 		else if (my_cell.state = "H") {
-			return -1.0;
+			return -#max_float; // lowest reward possible
 		}
 		else {
-			return 0.0;
+			return -1.0; // -1 because we are trying to minimize the number of movements
 		}
 	}
 	
@@ -153,7 +153,7 @@ species elf {
 		float reward <- reward();
 //		write 'value prev: ' + val + ' reward move:' + reward;
 		//update the value for the action done
-		q[previous_cell][act] <-q[previous_cell][act] + learning_rate * (reward + discount_factor *  max(q[my_cell].values) - q[previous_cell][act]);
+		q[previous_cell][act] <-(1 - learning_rate) * q[previous_cell][act] + learning_rate * (reward + discount_factor *  max(q[my_cell].values) - q[previous_cell][act]);
 	
 	}
 	
@@ -308,6 +308,7 @@ grid cell width: grid__side_size height: grid__side_size neighbors: 4 {
 }
 
 experiment Frozenlake type: gui {
+	float minimum_cycle_duration <- 0.003#s;
 	output {
 		display map type:2d{
 			species cell;
