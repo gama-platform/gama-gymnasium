@@ -20,14 +20,22 @@ global {
 	
 	
 	//Q-Learning parameter
-	float learning_rate <- 0.1;
-	float discount_factor <- 0.5;
+	float learning_rate <- 1.0 min:0.0 max:1.0; // setting it to 1 as we are in a deterministic environment
+	float discount_factor <- 0.8 min:0.0 max:1.0;
+	float exploration_rate <- 0.0 min:0.0 max:1.0;
 	
+	//define for each state (cell), the expected value of each possible move (neigbors cell)
+	map<cell, map<string,float>> q;
+	
+	// shortcut variables 
+	cell start_cell;
+	cell goal_cell;
 	
 	
 	geometry best_path_geom;
 	init {
 		do generate_maze;
+		do init_q_table;
 		create elf ;
 	}
 	
@@ -38,7 +46,12 @@ global {
 				ask cell {
 					state <- "F";
 				}
-				last(cell).state <- "G";
+				goal_cell <- last(cell);
+				goal_cell.state <- "G";
+				
+				start_cell <- first(cell);
+				start_cell.state <- "S";
+				
 				ask (cell as list) - [first(cell), last(cell)] {
 					if flip(proba_holes) {
 						state <- "H";
@@ -46,7 +59,7 @@ global {
 				} 
 			
 				using topology(cell) {
-					path the_path <- path_between((cell where (each.state != "H")), first(cell), last(cell));
+					path the_path <- path_between((cell where (each.state != "H")), start_cell, goal_cell);
 					maze_ok <- 	the_path != nil and not empty(the_path.edges);
 				}
 			}
@@ -59,13 +72,23 @@ global {
 			}
 		}
 	}
+	
+	action init_q_table {
+		loop c over: cell {
+			map<string,float> cells;
+			if (c.cell_down != nil) {cells["D"] <- 0.1;}
+			if (c.cell_up != nil) {cells["U"] <- 0.1;}
+			if (c.cell_right != nil) {cells["R"] <- 0.1;}
+			if (c.cell_left != nil) {cells["L"] <- 0.1;}
+			q[c] <- cells;
+		}
+	}
 }
 
 
 species elf {
 	
-	//define for each state (cell), the expected value of each possible move (neigbors cell)
-	map<cell, map<string,float>> q;
+
 	
 	int best_path <- #max_int;
 		
@@ -79,38 +102,39 @@ species elf {
 	int nb_moves <- 0;
 	
 	
-	init {
-		loop c over: cell {
-			map<string,float> cells;
-			if (c.cell_down != nil) {cells["D"] <- 0.0;}
-			if (c.cell_up != nil) {cells["U"] <- 0.0;}
-			if (c.cell_right != nil) {cells["R"] <- 0.0;}
-			if (c.cell_left != nil) {cells["L"] <- 0.0;}
-			q[c] <- cells;
-		
+	float reward {
+		if (my_cell.state = "G") {
+			return 1.0;
+		}
+		else if (my_cell.state = "H") {
+			return -1.0;
+		}
+		else {
+			return 0.0;
 		}
 	}
 	
-	int reward {
-		if (my_cell.state = "G") {
-			return 1;
+	string select_action (map<string, float> actions){
+		list<string> act <- shuffle(actions.keys);
+		if flip(exploration_rate){
+			return first(act);
 		}
-		if (my_cell.state = "H") {
-			return -1;
+		else {
+			return act with_max_of (actions[each]);
 		}
-		return 0;
 	}
 	
 	//move behavior
 	reflex moving when: not is_arrived {
 		map<string,float> actions <- q[my_cell];
+//		write 'possible actions: ' + actions;
 		
-		//choose as new cell the one that maximise the action value (random selection among the cells with the same value)
-		string act <- shuffle(actions.keys) with_max_of (actions[each]);
+		//choose as new cell the one that maximises the action value (random selection among the cells with the same value)
+		string act <- select_action(actions);
 		
 		//value of the move done (to the new cell)
 		float val <- actions[act];
-		
+		cell previous_cell <- my_cell;
 		
 		switch act {
 			match "D" {
@@ -126,9 +150,10 @@ species elf {
 				do move_left;
 			}
 		}
-		int reward <- reward();
+		float reward <- reward();
+//		write 'value prev: ' + val + ' reward move:' + reward;
 		//update the value for the action done
-		actions[act] <- val + learning_rate * (reward + discount_factor *  max(q[my_cell].values) - val);
+		q[previous_cell][act] <-q[previous_cell][act] + learning_rate * (reward + discount_factor *  max(q[my_cell].values) - q[previous_cell][act]);
 	
 	}
 	
@@ -142,7 +167,7 @@ species elf {
 		//just to display the path
 		current_path << my_cell;
 		location <- my_cell.location;
-		if (my_cell.state in ["H", "G"] or nb_moves >time_limit ) {
+		if (my_cell.state in ["H", "G"] or nb_moves > time_limit ) {
 			is_arrived <- true;
 		}
 		
@@ -164,7 +189,7 @@ species elf {
 				best_path_geom <- line(current_path collect each.location);
 			}
 			
-		//	write "Find the goal in " + length(current_path);
+//			write "Find the goal in " + length(current_path);
 		} else {
 		//	write "Failure";
 		}
@@ -251,6 +276,25 @@ grid cell width: grid__side_size height: grid__side_size neighbors: 4 {
 			}
 			match "F" {
 				draw shape texture:("images/ice.png") border: #black; 
+				if q[self] != nil {
+					string best_dir <- with_max_of (q[self].keys, q[self][each]);
+					if q[self][best_dir] > 0 {
+						switch best_dir{
+							match 'D' {
+								draw 'D' color:#red font:'helvetica';
+							}
+							match 'U' {
+								draw 'U' color:#red font:'helvetica';
+							}							
+							match 'R' {
+								draw 'R' color:#red font:'helvetica';
+							}							
+							match 'L' {
+								draw 'L' color:#red font:'helvetica';
+							}
+						}
+					}
+				}
 			}
 			match "H" {
 				draw shape texture:("images/hole.png") border: #black; 
@@ -265,11 +309,11 @@ grid cell width: grid__side_size height: grid__side_size neighbors: 4 {
 
 experiment Frozenlake type: gui {
 	output {
-		display map {
+		display map type:2d{
 			species cell;
 			graphics "best path" {
 				if (best_path_geom != nil) {
-					draw best_path_geom + 0.5 color: #red;
+					draw best_path_geom + 0.5 color: #green;
 				}
 			}
 			species elf;
