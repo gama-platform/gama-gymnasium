@@ -4,7 +4,7 @@ Main GamaEnv class implementing the Gymnasium interface for GAMA simulations.
 import time
 from typing import Any, SupportsFloat
 import traceback
-
+import json
 import numpy as np
 import gymnasium as gym
 from gymnasium.core import ActType, ObsType
@@ -71,6 +71,34 @@ class GamaEnv(gym.Env):
         self.observation_space = self.space_converter.map_to_space(obs_space_data)
         self.action_space = self.space_converter.map_to_space(action_space_data)
 
+    def _fast_act_encode(self, action) -> Any:
+        """
+        Optimization 1: Encode action without Gymnasium's to_jsonable() overhead.
+        For Discrete → plain int; for Box → plain float or list of float.
+        Falls back to the generic path for unknown space types.
+        """
+        space = self.action_space
+        if isinstance(space, gym.spaces.Discrete):
+            return int(action)
+        elif isinstance(space, gym.spaces.Box):
+            if np.ndim(action) == 0:
+                return float(action)
+            return [float(v) for v in np.ravel(action)]
+        # Generic fallback
+        return space.to_jsonable([action])[0]
+
+    def _fast_obs_convert(self, state) -> Any:
+        """
+        Optimization 2: Convert GAMA observation without SpaceConverter overhead.
+        For Box → direct np.array with the right dtype.
+        Falls back to the generic SpaceConverter path for unknown types.
+        """
+        space = self.observation_space
+        if isinstance(space, gym.spaces.Box):
+            return np.array(state, dtype=space.dtype)
+        # Generic fallback
+        return self.space_converter.convert_gama_to_gym_observation(space, state)
+
     def reset(self, seed: int = None, options: dict[str, Any] | None = None) -> tuple[ObsType, dict[str, Any]]:
         """Reset the environment and return initial observation."""
         super().reset(seed=seed, options=options)
@@ -84,9 +112,9 @@ class GamaEnv(gym.Env):
         
         # print("GAMA experiment reset. Initial state:", state)
         
-        # Convert state using the space converter
+        # Convert state using the optimized fast path
         try:
-            obs = self.space_converter.convert_gama_to_gym_observation(self.observation_space, state)
+            obs = self._fast_obs_convert(state)
         except Exception as e:
             print(f"Conversion error: {e}")
             traceback.print_exc()
@@ -96,15 +124,15 @@ class GamaEnv(gym.Env):
 
     def step(self, action: ActType) -> tuple[ObsType, SupportsFloat, bool, bool, dict[str, Any]]:
         """Execute one step in the environment."""
-        # Convert action to GAMA format
-        gama_action = self.action_space.to_jsonable([action])[0]
-        
+        # Convert action to GAMA format using the optimized fast path
+        gama_action = self._fast_act_encode(action)
+        action_json = json.dumps(gama_action, separators=(',', ':'))
         # Execute step in GAMA
-        step_data = self.gama_client.execute_step(self.experiment_id, gama_action)
+        step_data = self.gama_client.execute_step(self.experiment_id, action_json)
         
-        # Extract and convert observation using the space converter
+        # Extract and convert observation using the optimized fast path
         try:
-            state = self.space_converter.convert_gama_to_gym_observation(self.observation_space, step_data["State"])
+            state = self._fast_obs_convert(step_data["State"])
         except Exception as e:
             print(f"Step conversion error: {e}")
             traceback.print_exc()
