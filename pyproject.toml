@@ -4,10 +4,11 @@ build-backend = "hatchling.build"
 
 [project]
 name = "gama-gymnasium"
-version = "1.0.0"
+version = "1.0.1"
 authors = [
   { name="Baptiste Lesquoy", email="baptiste.lesquoy@ird.fr" },
   { name="Meritxell Vinyals", email="meritxell.vinyals@inrae.fr" },
+  { name="Félix Savarit" },
 ]
 description = "A Gymnasium environment for reinforcement learning with GAMA agent-based simulations"
 readme = "README.md"
@@ -77,6 +78,10 @@ extend-exclude = '''
 /(
   __pycache__
   | \.git
+  | \.github
+  | \.idea
+  | venv
+  | .gitignore
   | \.venv
   | build
   | dist
