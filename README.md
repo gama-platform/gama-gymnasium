@@ -127,7 +127,7 @@ gama-gymnasium/
 ├── 📁 examples/          # Complete examples and tutorials
 ├── pyproject.toml	      # Python package configuration
 ├── LICENSE               # Package license
-└── � pytest.ini         # Testing configuration
+└── pytest.ini            # Testing configuration
 ```
 
 ## 📚 Documentation and Examples
