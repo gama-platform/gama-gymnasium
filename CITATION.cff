@@ -1,0 +1,13 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "gama-gymnasium"
+version: "1.0.1"
+authors:
+  - family-names: "Lesquoy"
+    given-names: "Baptiste"
+    orcid: "https://orcid.org/0009-0000-6906-9418"
+  - family-names: "Taillandier"
+    given-names: "Patrick"
+    orcid: "https://orcid.org/0000-0003-2939-4827"  
+- family-names: "Savarit"
+    given-names: "Félix"
