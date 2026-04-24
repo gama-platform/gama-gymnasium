@@ -2,6 +2,7 @@
 
 [![Python Package](https://img.shields.io/pypi/v/gama-gymnasium)](https://pypi.org/project/gama-gymnasium/)
 [![License](https://img.shields.io/github/license/gama-platform/gama-gymnasium)](LICENSE)
+[![DOI](https://zenodo.org/badge/901260083.svg)](https://doi.org/10.5281/zenodo.19723614)
 
 **GAMA-Gymnasium** is a generic [Gymnasium](https://gymnasium.farama.org/) environment that enables the integration of simulations from the [GAMA](https://gama-platform.org/) modeling platform with reinforcement learning algorithms.
 
