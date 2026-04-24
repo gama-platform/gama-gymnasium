@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "gama-gymnasium"
-version = "0.1.1"
+version = "1.0.0"
 authors = [
   { name="Baptiste Lesquoy", email="baptiste.lesquoy@ird.fr" },
   { name="Meritxell Vinyals", email="meritxell.vinyals@inrae.fr" },
@@ -15,7 +15,7 @@ license = { file="LICENSE" }
 requires-python = ">=3.8"
 keywords = ["reinforcement-learning", "gymnasium", "gama", "agent-based-modeling", "simulation", "rl"]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
     "Intended Audience :: Science/Research",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
